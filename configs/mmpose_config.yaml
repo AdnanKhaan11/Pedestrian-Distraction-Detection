@@ -1,0 +1,45 @@
+# What this file does
+# This file stores all pose-related settings.
+
+# It is directly based on your current logic from:
+
+# step01_annotate_image_mmpose/configs/mmpose_config.py
+# processing.py
+# annotate_image.py
+# So this is not random design. It is your real project logic moved into clean YAML.
+
+mmpose:
+  device_preference: "auto"   # auto, cpu, cuda
+
+  detector:
+    config_file: "model_config/configs/rtmdet_nano_320-8xb32_coco-person.py"
+    checkpoint_file: "artifacts/mmpose/checkpoints/rtmdet_nano_8xb32-100e_coco-obj365-person-05d8511e.pth"
+    category_id: 0
+    bbox_threshold_multi_person: 0.30
+    bbox_threshold_single_person: 0.85
+    nms_threshold: 0.30
+
+  pose_estimator:
+    config_file: "model_config/configs/rtmpose-t_8xb256-420e_coco-256x192.py"
+    checkpoint_file: "artifacts/mmpose/checkpoints/rtmpose-tiny_simcc-aic-coco_pt-aic-coco_420e-256x192-cfc8f33d_20230126.pth"
+
+  visualizer:
+    draw_bbox: true
+    draw_heatmap: false
+    keypoint_threshold: 0.30
+    radius: 3
+    alpha: 0.80
+    thickness: 1
+    skeleton_style: "mmpose"
+
+  keypoints:
+    use_first_n_keypoints: 13
+    left_shoulder_index: 5
+    right_shoulder_index: 6
+    left_elbow_index: 7
+    right_elbow_index: 8
+    left_wrist_index: 9
+    right_wrist_index: 10
+    left_ear_index: 3
+    right_ear_index: 4
+    face_center_index: 0

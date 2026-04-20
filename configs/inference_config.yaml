@@ -1,0 +1,56 @@
+# What this file does
+# This file controls runtime inference behavior.
+
+# It is based on your current live pipeline logic:
+
+# frame size
+# confidence thresholds
+# multiple persons
+# render settings
+# phone detection thresholds
+# face announce interval
+
+inference:
+  general:
+    device_preference: "auto"   # auto, cpu, cuda
+    allow_multiple_persons: true
+    max_persons_per_frame: 10
+    save_prediction_images: true
+    save_runtime_hand_crops: false
+
+  video:
+    default_frame_width: 640
+    default_frame_height: 480
+    websocket_frame_width: 384
+    websocket_frame_height: 288
+
+  posture:
+    confidence_threshold: 0.75
+    out_of_frame_missing_keypoints_threshold: 5
+    keypoint_score_threshold: 0.30
+    backside_ratio_threshold: -0.20
+
+  phone:
+    trained_model_confidence: 0.65
+    fallback_model_confidence: 0.35
+    face_announce_interval_seconds: 5
+    spare_ratio_threshold: 0.45
+
+  rendering:
+    show_fps: true
+    show_current_time: true
+    show_last_announce_time: true
+    show_person_bbox: true
+    show_hand_bbox: true
+    show_face_bbox: true
+    window_title: "Pedestrian Distraction Detection"
+
+  api:
+    host: "0.0.0.0"
+    port: 8000
+    reload: true
+
+  frontend:
+    app_title: "Pedestrian Distraction Detection"
+    upload_folder: "app/static/uploads"
+    result_folder: "app/static/results"

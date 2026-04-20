@@ -1,0 +1,292 @@
+<!--
+This file is the main frontend UI for your project.
+It includes a modern responsive layout, upload-based inference, training actions,
+login-style modal, project information, and scalable sections for future expansion.
+The page is designed to look polished for FYP presentation and practical testing.
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ app_title }}</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <div class="brand-block">
+          <div class="brand-mark">PD</div>
+          <div>
+            <h1>{{ app_title }}</h1>
+            <p>
+              Industrial MLOps Interface for Pedestrian Phone and Distraction
+              Detection
+            </p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <button class="ghost-btn" id="openAboutBtn">About</button>
+          <button class="primary-btn" id="openLoginBtn">Login</button>
+        </div>
+      </header>
+
+      <main class="main-grid">
+        <section class="hero-card">
+          <div class="hero-copy">
+            <span class="section-tag">Production-style Detection</span>
+            <h2>
+              Detect distracted pedestrians using pose logic + phone
+              verification
+            </h2>
+            <p>
+              This platform follows your project’s real pipeline: MMPose detects
+              pose, the posture model checks suspicious behavior, and the phone
+              detector verifies actual phone presence.
+            </p>
+            <div class="hero-pills">
+              <span>FastAPI Backend</span>
+              <span>MLflow + DAGsHub</span>
+              <span>CPU/GPU Friendly</span>
+              <span>Responsive UI</span>
+            </div>
+          </div>
+
+          <div class="hero-stats">
+            <div class="stat-card">
+              <strong>3-Stage</strong>
+              <span>Vision Pipeline</span>
+            </div>
+            <div class="stat-card">
+              <strong>2 Models</strong>
+              <span>Posture + Phone</span>
+            </div>
+            <div class="stat-card">
+              <strong>MMPose</strong>
+              <span>Keypoint Engine</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel-card">
+          <div class="panel-header">
+            <h3>Run Inference</h3>
+            <p>Upload one image and get a distraction prediction.</p>
+          </div>
+
+          <form id="predictForm" class="form-stack">
+            <label class="upload-zone" for="imageInput">
+              <input
+                type="file"
+                id="imageInput"
+                name="file"
+                accept=".jpg,.jpeg,.png,.bmp,.webp"
+                hidden
+              />
+              <span class="upload-title">Click to upload image</span>
+              <span class="upload-subtitle"
+                >Supported: JPG, PNG, BMP, WEBP</span
+              >
+            </label>
+
+            <div class="preview-grid">
+              <div class="preview-card">
+                <h4>Input Preview</h4>
+                <img id="inputPreview" alt="Input preview" />
+              </div>
+              <div class="preview-card">
+                <h4>Prediction Output</h4>
+                <img id="outputPreview" alt="Output preview" />
+              </div>
+            </div>
+
+            <button type="submit" class="primary-btn full-btn">
+              Run Prediction
+            </button>
+          </form>
+
+          <div id="predictStatus" class="status-box neutral">
+            Waiting for input...
+          </div>
+
+          <div class="result-box" id="resultBox">
+            <h4>Prediction Summary</h4>
+            <div id="resultContent">No prediction yet.</div>
+          </div>
+        </section>
+
+        <section class="panel-card">
+          <div class="panel-header">
+            <h3>Training Control Center</h3>
+            <p>Trigger training flows from the UI when needed.</p>
+          </div>
+
+          <div class="train-grid">
+            <div class="train-card">
+              <h4>Posture Classifier</h4>
+              <p>
+                Runs the posture training pipeline using saved pose-feature
+                data.
+              </p>
+              <button id="trainPostureBtn" class="secondary-btn">
+                Train Posture Model
+              </button>
+            </div>
+
+            <div class="train-card">
+              <h4>Phone Detector</h4>
+              <p>
+                Runs YOLO-based phone detector training using the processed
+                phone dataset.
+              </p>
+              <button id="trainPhoneBtn" class="secondary-btn">
+                Train Phone Detector
+              </button>
+            </div>
+          </div>
+
+          <div id="trainStatus" class="status-box neutral">
+            No training job started.
+          </div>
+        </section>
+
+        <section class="panel-card">
+          <div class="panel-header">
+            <h3>System Overview</h3>
+            <p>
+              Understand how your actual project works in the new MLOps
+              structure.
+            </p>
+          </div>
+
+          <div class="timeline">
+            <div class="timeline-item">
+              <span>1</span>
+              <div>
+                <h4>MMPose Detection</h4>
+                <p>Detect people and extract body keypoints from the frame.</p>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <span>2</span>
+              <div>
+                <h4>Posture Analysis</h4>
+                <p>
+                  Convert keypoints into structured angle-score features for the
+                  posture model.
+                </p>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <span>3</span>
+              <div>
+                <h4>Phone Verification</h4>
+                <p>
+                  Crop hand regions and run the YOLO phone detector only when
+                  posture is suspicious.
+                </p>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <span>4</span>
+              <div>
+                <h4>Final Decision</h4>
+                <p>
+                  Fuse posture and phone signals into the final distraction
+                  label.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel-card wide-card">
+          <div class="panel-header">
+            <h3>Project Information</h3>
+            <p>
+              A presentable summary for your FYP demo and future deployment
+              roadmap.
+            </p>
+          </div>
+
+          <div class="info-grid">
+            <article>
+              <h4>Backend</h4>
+              <p>
+                FastAPI is used for model serving, file upload, health
+                monitoring, and training triggers.
+              </p>
+            </article>
+            <article>
+              <h4>Tracking</h4>
+              <p>
+                MLflow + DAGsHub are used for experiment tracking,
+                reproducibility, and artifact management.
+              </p>
+            </article>
+            <article>
+              <h4>Model Stack</h4>
+              <p>
+                MMPose + posture classifier + YOLO phone detector are integrated
+                in one clean pipeline.
+              </p>
+            </article>
+            <article>
+              <h4>Frontend</h4>
+              <p>
+                This responsive HTML/CSS/JS interface is lighter and more
+                presentable than a notebook workflow.
+              </p>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal-backdrop hidden" id="loginModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Login</h3>
+          <button class="close-btn" id="closeLoginBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-note">
+            This is a UI-ready login panel for future expansion. For now, it
+            acts as a frontend placeholder.
+          </p>
+          <form class="form-stack">
+            <input type="text" placeholder="Username" />
+            <input type="password" placeholder="Password" />
+            <button type="button" class="primary-btn">Sign In</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="aboutModal">
+      <div class="modal-card large-modal">
+        <div class="modal-header">
+          <h3>About This Project</h3>
+          <button class="close-btn" id="closeAboutBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>
+            This project detects whether a pedestrian is distracted, especially
+            by phone usage, by combining human pose estimation and phone
+            detection in one structured MLOps pipeline.
+          </p>
+          <ul class="about-list">
+            <li>MMPose detects people and extracts keypoints.</li>
+            <li>A posture model analyzes suspicious body posture.</li>
+            <li>A YOLO model checks cropped hand regions for phones.</li>
+            <li>FastAPI serves predictions and training control endpoints.</li>
+            <li>MLflow + DAGsHub track training runs and artifacts.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+  </body>
+</html>

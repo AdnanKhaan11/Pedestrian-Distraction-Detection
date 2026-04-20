@@ -1,0 +1,52 @@
+# What this file does
+# This file centralizes all folder and file paths.
+
+# Why this is important:
+
+# no hardcoded D:\... paths inside Python
+# easy to move project later
+# easy to debug
+# clean MLOps style
+
+paths:
+  artifacts_root: "artifacts"
+  logs_dir: "logs"
+
+  data_root: "data"
+  raw_data_dir: "data/raw"
+  interim_data_dir: "data/interim"
+  processed_data_dir: "data/processed"
+
+  mmpose_checkpoint_dir: "artifacts/mmpose/checkpoints"
+
+  posture_model_dir: "artifacts/posture_classifier"
+  posture_weights_dir: "artifacts/posture_classifier/weights"
+  posture_archive_dir: "artifacts/posture_classifier/archive"
+
+  phone_model_dir: "artifacts/phone_detector"
+  phone_pretrained_dir: "artifacts/phone_detector/pretrained"
+  phone_weights_dir: "artifacts/phone_detector/weights"
+  phone_archive_dir: "artifacts/phone_detector/archive"
+
+  metrics_dir: "artifacts/metrics"
+  predictions_dir: "artifacts/predictions"
+
+  raw_video_dir: "data/raw/videos"
+  raw_image_dir: "data/raw/images"
+
+  posture_feature_dir: "data/processed/posture_features"
+  hand_crop_dir: "data/processed/hand_crops"
+  phone_dataset_dir: "data/processed/phone_dataset"
+
+  frontend_upload_dir: "app/static/uploads"
+  frontend_result_dir: "app/static/results"
+
+files:
+  person_detector_checkpoint: "artifacts/mmpose/checkpoints/rtmdet_nano_8xb32-100e_coco-obj365-person-05d8511e.pth"
+  pose_estimator_checkpoint: "artifacts/mmpose/checkpoints/rtmpose-tiny_simcc-aic-coco_pt-aic-coco_420e-256x192-cfc8f33d_20230126.pth"
+
+  default_posture_model: "artifacts/posture_classifier/weights/best_posture_model.pth"
+  archived_posture_model: "artifacts/posture_classifier/archive/posture_mmpose_vgg3d_20250227-225653.pth"
+
+  default_phone_model: "artifacts/phone_detector/weights/best.pt"
+  fallback_phone_model: "artifacts/phone_detector/pretrained/yolo11n.pt"

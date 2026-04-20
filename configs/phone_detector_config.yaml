@@ -1,0 +1,47 @@
+# What this file does
+# This file stores the phone detector settings.
+
+# This is directly based on your current code logic from:
+
+# processing.py
+# step03_yolo_phone_detection/dvalue.py
+# main.py
+# GUI.py
+# It includes:
+
+# trained model path
+# fallback model path
+# class index rules
+# crop rules for hand regions
+# runtime options
+# So again, this is your existing logic cleaned and externalized.
+
+
+
+phone_detector:
+  framework: "ultralytics_yolo"
+  task_type: "phone_detection"
+
+  weights:
+    default_weight_file: "artifacts/phone_detector/weights/best.pt"
+    fallback_weight_file: "artifacts/phone_detector/pretrained/yolo11n.pt"
+
+  inference:
+    image_size: 128
+    confidence_threshold_trained: 0.65
+    confidence_threshold_fallback: 0.35
+
+    use_trained_model_by_default: true
+    trained_model_phone_class_index: 0
+    fallback_model_phone_class_index: 67
+
+  hand_crop_logic:
+    far_body_hand_ratio: 0.70
+    near_body_hand_ratio: 0.45
+    merge_hand_distance_ratio: 0.21
+    hand_extension_ratio: 0.80
+    spare_ratio_threshold: 0.45
+
+  runtime:
+    save_runtime_handframes: false
+    runtime_handframe_format: "png"

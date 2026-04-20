@@ -1,0 +1,46 @@
+# What this file does
+# This file stores posture-classifier settings.
+
+# It is based on your actual current posture model:
+
+# MLP3d
+# binary classification
+# 2-channel pose feature tensor
+# confidence threshold used in current runtime logic
+# This is the clean MLOps version of your current posture model setup.
+
+posture_model:
+  model_name: "MLP3d"
+  task_type: "binary_classification"
+  input_channels: 2
+  output_classes: 2
+
+  input_shape:
+    channels: 2
+    depth: 7
+    height: 12
+    width: 11
+
+  architecture:
+    conv_kernel_size: [3, 5, 5]
+    pool_kernel_size: 2
+    activation: "SiLU"
+    fc_dims:
+      - 7392
+      - 1848
+      - 256
+
+  inference:
+    confidence_threshold: 0.75
+    class_names:
+      - "not_using"
+      - "using_or_suspicious"
+
+  weights:
+    default_weight_file: "artifacts/posture_classifier/weights/best_posture_model.pth"
+    archive_weight_file: "artifacts/posture_classifier/archive/posture_mmpose_vgg3d_20250227-225653.pth"
+
+  feature_engineering:
+    feature_type: "angle_score_cube"
+    normalize_per_channel: true
+    transpose_to_ncdhw: true

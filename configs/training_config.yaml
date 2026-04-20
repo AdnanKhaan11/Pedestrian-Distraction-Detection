@@ -1,0 +1,67 @@
+# What this file does
+# This file controls training behavior for both:
+
+# posture classifier training
+# phone detector training
+# It supports both cases:
+
+# train from scratch
+# reuse already trained weights
+# That matches your requirement exactly.
+
+training:
+  general:
+    random_seed: 42
+    device_preference: "auto"   # auto, cpu, cuda
+    num_workers: 0              # keep 0 for Windows safety
+    pin_memory: false
+
+  posture_training:
+    enabled: true
+    use_existing_weights: true
+    existing_weights_path: "artifacts/posture_classifier/weights/best_posture_model.pth"
+
+    data:
+      source_feature_dir: "data/processed/posture_features"
+      train_split: 0.70
+      val_split: 0.15
+      test_split: 0.15
+      shuffle: true
+
+    hyperparameters:
+      epochs: 50
+      batch_size: 8
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      early_stopping_patience: 5
+      min_delta: 0.0001
+
+    outputs:
+      save_best_model_as: "best_posture_model.pth"
+      save_last_model_as: "last_posture_model.pth"
+      metrics_file_name: "posture_metrics.json"
+      history_file_name: "posture_training_history.json"
+
+  phone_training:
+    enabled: true
+    use_existing_weights: true
+    existing_weights_path: "artifacts/phone_detector/weights/best.pt"
+
+    data:
+      source_dataset_dir: "data/processed/phone_dataset"
+
+    hyperparameters:
+      epochs: 100
+      batch_size: 16
+      image_size: 128
+      learning_rate: 0.001
+
+    outputs:
+      save_best_model_as: "best.pt"
+      metrics_file_name: "phone_metrics.json"
+
+  tracking:
+    enable_mlflow: true
+    experiment_name_posture: "posture_classifier_training"
+    experiment_name_phone: "phone_detector_training"
+    tracking_uri: "https://dagshub.com/ak5933487/Pedestrian-Distraction-Detection.mlflow"

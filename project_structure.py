@@ -1,9 +1,5 @@
-import os
 from pathlib import Path
 
-# -------------------------------
-# 📁 FOLDERS
-# -------------------------------
 FOLDERS = [
     "configs",
     "src",
@@ -16,22 +12,30 @@ FOLDERS = [
     "src/serving",
     "scripts",
     "app",
+    "app/templates",
+    "app/static",
+    "app/static/css",
+    "app/static/js",
+    "app/static/uploads",
+    "app/static/results",
     "tests",
     "docker",
     ".github/workflows",
-    "artifacts/posture",
-    "artifacts/phone",
+    "artifacts/mmpose/checkpoints",
+    "artifacts/posture_classifier/weights",
+    "artifacts/posture_classifier/archive",
+    "artifacts/phone_detector/pretrained",
+    "artifacts/phone_detector/weights",
+    "artifacts/phone_detector/archive",
     "artifacts/metrics",
     "artifacts/predictions",
+    "logs",
     "data/raw",
     "data/interim",
     "data/processed",
     "notebooks",
 ]
 
-# -------------------------------
-# 📄 FILES
-# -------------------------------
 FILES = [
     "configs/config.yaml",
     "configs/paths.yaml",
@@ -84,7 +88,9 @@ FILES = [
     "scripts/train_phone_model.py",
     "scripts/run_inference.py",
     "app/api.py",
-    "app/streamlit_app.py",
+    "app/templates/index.html",
+    "app/static/css/style.css",
+    "app/static/js/main.js",
     "tests/test_config.py",
     "tests/test_posture_model.py",
     "tests/test_inference_pipeline.py",
@@ -96,39 +102,27 @@ FILES = [
 ]
 
 
-# -------------------------------
-# 🚀 CREATE STRUCTURE
-# -------------------------------
 def create_structure():
-    root = Path(".")  # 👈 current folder (IMPORTANT CHANGE)
+    root = Path(".")
 
-    print("\n🚀 Updating existing project structure...\n")
+    print("\nUpdating project structure...\n")
 
-    # Create folders
     for folder in FOLDERS:
         folder_path = root / folder
-        if not folder_path.exists():
-            folder_path.mkdir(parents=True, exist_ok=True)
-            print(f"📁 Created: {folder_path}")
-        else:
-            print(f"✔️ Exists: {folder_path}")
+        folder_path.mkdir(parents=True, exist_ok=True)
+        print(f"OK folder: {folder_path}")
 
-    # Create files
     for file in FILES:
         file_path = root / file
         file_path.parent.mkdir(parents=True, exist_ok=True)
-
         if not file_path.exists():
             file_path.touch()
-            print(f"📄 Created: {file_path}")
+            print(f"Created file: {file_path}")
         else:
-            print(f"✔️ Exists: {file_path}")
+            print(f"OK file: {file_path}")
 
-    print("\n✅ Structure updated (no overwrite, Git-safe)\n")
+    print("\nStructure is ready.\n")
 
 
-# -------------------------------
-# ▶️ RUN
-# -------------------------------
 if __name__ == "__main__":
     create_structure()
