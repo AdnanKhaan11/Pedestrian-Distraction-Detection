@@ -42,9 +42,10 @@ class PhoneModelLoader:
             from ultralytics import YOLO
 
             return YOLO
-        except ImportError as exc:
-            raise ImportError(
-                "Ultralytics is not installed. Please install it before loading the phone detector."
+        except (ImportError, OSError) as exc:
+            raise RuntimeError(
+                "Unable to import Ultralytics YOLO. Ensure the package is installed "
+                "and the environment has permission to access Ultralytics settings."
             ) from exc
 
     def load_trained_model(self):

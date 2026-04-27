@@ -43,6 +43,15 @@ class PostureModelService:
         model = MLP3d(
             input_channel_num=self.config.input_channels,
             output_class_num=self.config.output_classes,
+            input_shape=(
+                self.config.input_shape.depth,
+                self.config.input_shape.height,
+                self.config.input_shape.width,
+            ),
+            conv_kernel_size=tuple(self.config.architecture.conv_kernel_size),
+            pool_kernel_size=self.config.architecture.pool_kernel_size,
+            activation_name=self.config.architecture.activation,
+            fc_dims=self.config.architecture.fc_dims,
         )
         return model
 
@@ -81,7 +90,7 @@ class PostureModelService:
         Predict from one already-prepared tensor.
 
         Expected tensor shape:
-        (N, C, D, H, W)
+        (1, C, D, H, W)
         """
         if self.model is None:
             self.load_model()
@@ -89,6 +98,12 @@ class PostureModelService:
         if input_tensor.ndim != 5:
             raise ValueError(
                 f"Expected posture tensor shape (N, C, D, H, W), got: {input_tensor.shape}"
+            )
+
+        if input_tensor.shape[0] != 1:
+            raise ValueError(
+                "PostureModelService expects exactly one sample for runtime inference. "
+                f"Received batch size: {input_tensor.shape[0]}"
             )
 
         input_tensor = input_tensor.to(self.device)
@@ -116,7 +131,7 @@ class PostureModelService:
         Predict from numpy tensor.
 
         Expected numpy shape:
-        (N, C, D, H, W)
+        (1, C, D, H, W)
         """
         tensor = torch.tensor(input_array, dtype=torch.float32)
         return self.predict_tensor(tensor)

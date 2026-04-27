@@ -1,11 +1,15 @@
 import base64
 import json
 import time
-from typing import List, Tuple, Union
+from typing import Any, List, Tuple, Union
 
 import cv2
 import numpy as np
-import websocket
+
+try:
+    import websocket
+except ImportError:
+    websocket = None
 
 
 COLOR_BGR = {
@@ -205,10 +209,13 @@ def relative_to_absolute(
     return [abs_x1, abs_y1, abs_x2, abs_y2]
 
 
-def init_websocket(server_url: str) -> websocket.WebSocket | None:
+def init_websocket(server_url: str) -> Any | None:
     """
     Initialize websocket connection safely.
     """
+    if websocket is None:
+        return None
+
     try:
         ws = websocket.WebSocket()
         ws.connect(server_url)

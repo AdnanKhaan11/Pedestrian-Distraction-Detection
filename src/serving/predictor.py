@@ -73,7 +73,9 @@ class Predictor:
         if save_rendered_output:
             output_name = f"pred_{image_path.stem}.jpg"
             output_path = self.paths_config.frontend_result_dir / output_name
-            cv2.imwrite(str(output_path), result["frame"])
+            save_ok = cv2.imwrite(str(output_path), result["frame"])
+            if not save_ok:
+                raise IOError(f"Could not save rendered output image: {output_path}")
             saved_result_path = str(output_path)
 
         response = {

@@ -41,6 +41,7 @@ data/processed/
 !data/raw/.gitkeep
 !data/interim/.gitkeep
 !data/processed/.gitkeep
+artifacts/
 
 # ================================
 # 📈 LOGS & OUTPUTS

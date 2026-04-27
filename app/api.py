@@ -1,8 +1,12 @@
 """
-This file is the FastAPI backend for your new project.
-It serves the frontend, accepts uploaded images, runs inference,
-and can trigger training scripts from the UI. This keeps backend
-logic clean, modular, and ready for later deployment and testing.
+Production-ready FastAPI backend for Pedestrian Phone Detection System.
+
+This module:
+- Initializes FastAPI with modular architecture
+- Integrates ML predictor (unchanged)
+- Provides authentication, detection, face recognition, and reporting APIs
+- Serves frontend with proper error handling
+- Implements CORS and security middleware
 """
 
 import subprocess
@@ -13,6 +17,7 @@ from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
@@ -20,15 +25,42 @@ if str(ROOT_DIR) not in sys.path:
 
 from src.config.configuration import ConfigurationManager
 from src.serving.predictor import Predictor
-from src.serving.schemas import HealthResponse, InferenceResponse
+from src.serving.schemas import InferenceResponse
 from src.utils.common import create_directories
 from src.utils.logger import get_logger
 
+# Import modular routes
+from app.core.config import settings
+from app.core.security import generate_unique_filename
+from app.db.database import init_db, get_db
+from app.routes import auth, detect, face, reports
+from app.schemas.models import HealthResponse
+
+# Initialize FastAPI app
 app = FastAPI(
-    title="Pedestrian Distraction Detection API",
-    version="1.0.0",
-    description="Backend API for pedestrian distraction detection using MMPose + posture classifier + phone detector.",
+    title="Pedestrian Phone Detection API - v2.0",
+    version="2.0.0",
+    description="Production-ready backend for pedestrian phone detection with face recognition and reporting.",
+    docs_url="/api/docs",
+    openapi_url="/api/openapi.json",
 )
+
+# ============================================================================
+# MIDDLEWARE
+# ============================================================================
+
+# CORS middleware for frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ============================================================================
+# CONFIGURATION & SETUP
+# ============================================================================
 
 config_manager = ConfigurationManager()
 paths_config = config_manager.get_paths_config()
@@ -40,16 +72,36 @@ create_directories(
         paths_config.frontend_upload_dir,
         paths_config.frontend_result_dir,
         paths_config.metrics_dir,
+        settings.UPLOAD_DIR,
+        settings.RESULT_DIR,
+        settings.EMBEDDINGS_DIR,
     ]
 )
 
 logger = get_logger("api", log_dir=paths_config.logs_dir, level="INFO")
 predictor = Predictor(log_dir=paths_config.logs_dir, log_level="INFO")
 
+# Initialize database
+init_db()
+logger.info("Database initialized")
+
+# ============================================================================
+# STATIC FILES & TEMPLATES
+# ============================================================================
+
 templates = Jinja2Templates(directory=str(ROOT_DIR / "app" / "templates"))
 app.mount(
     "/static", StaticFiles(directory=str(ROOT_DIR / "app" / "static")), name="static"
 )
+
+# ============================================================================
+# ROUTE INCLUSION
+# ============================================================================
+
+app.include_router(auth.router)
+app.include_router(detect.router)
+app.include_router(face.router)
+app.include_router(reports.router)
 
 
 @app.get("/", response_class=HTMLResponse)

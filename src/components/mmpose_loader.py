@@ -33,14 +33,26 @@ class MMPoseLoader:
 
     def _validate_files(self) -> None:
         """
-        Make sure checkpoint files exist before loading.
+        Make sure config and checkpoint files exist before loading.
         """
+        detector_config = Path(self.config.detector.config_file)
         detector_checkpoint = Path(self.config.detector.checkpoint_file)
+        pose_config = Path(self.config.pose_estimator.config_file)
         pose_checkpoint = Path(self.config.pose_estimator.checkpoint_file)
+
+        if not detector_config.exists():
+            raise FileNotFoundError(
+                f"Person detector config file not found: {detector_config}"
+            )
 
         if not detector_checkpoint.exists():
             raise FileNotFoundError(
                 f"Person detector checkpoint not found: {detector_checkpoint}"
+            )
+
+        if not pose_config.exists():
+            raise FileNotFoundError(
+                f"Pose estimator config file not found: {pose_config}"
             )
 
         if not pose_checkpoint.exists():
@@ -63,10 +75,10 @@ class MMPoseLoader:
             from mmpose.apis import init_model as init_pose_estimator
             from mmpose.registry import VISUALIZERS
             from mmpose.utils import register_all_modules, adapt_mmdet_pipeline
-        except ImportError as exc:
-            raise ImportError(
-                "MMPose/MMDetection is not installed correctly. "
-                "Please install the required packages before loading pose models."
+        except (ImportError, OSError) as exc:
+            raise RuntimeError(
+                "Unable to import MMPose/MMDetection. Ensure the packages are installed "
+                "and the environment can access their dependencies."
             ) from exc
 
         register_all_modules()

@@ -46,6 +46,17 @@ class PostureTrainer:
         self.model = MLP3d(
             input_channel_num=self.posture_model_config.input_channels,
             output_class_num=self.posture_model_config.output_classes,
+            input_shape=(
+                self.posture_model_config.input_shape.depth,
+                self.posture_model_config.input_shape.height,
+                self.posture_model_config.input_shape.width,
+            ),
+            conv_kernel_size=tuple(
+                self.posture_model_config.architecture.conv_kernel_size
+            ),
+            pool_kernel_size=self.posture_model_config.architecture.pool_kernel_size,
+            activation_name=self.posture_model_config.architecture.activation,
+            fc_dims=self.posture_model_config.architecture.fc_dims,
         ).to(self.device)
 
     def _setup_mlflow(self) -> None:
