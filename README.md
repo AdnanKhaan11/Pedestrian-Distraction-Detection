@@ -36,10 +36,10 @@ Pedestrian Distraction Detection System
 
 <br/>
 
-> **Supervisor:** Prof. Bob Zhang &nbsp;|&nbsp; **Students:** Huang Yanzhen DC126732 &nbsp;·&nbsp; Mai Jiajun DC127853
+> **Supervisor:** Dr. Adeel Ahmad   &nbsp;|&nbsp; **Students:** Adnan Khan F22-0431 &nbsp;·&nbsp; Bilal Asghar F22-1813
 >
-> *University of Science & Technology — Faculty of Science and Technology*
-> *Department of Computer and Information Science*
+> *University of Haripur  — Faculty of Science and Technology*
+> *Department of  Information Technology*
 
 <br/>
 
@@ -987,7 +987,7 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 
 Special thanks to:
 
-- **Prof. Bob Zhang** — Project supervisor and academic guidance
+- **Prof. Dr Adeel Ahmad ** — Project supervisor and academic guidance
 - **MMPose Team** (OpenMMLab) — RTMPose implementation
 - **Ultralytics** — YOLOv11n framework
 - **InsightFace Team** — Face embedding library
@@ -1001,7 +1001,7 @@ Special thanks to:
 
 **Built with ❤️ at the University of Science & Technology**
 
-*Department of Computer and Information Science · Final Year Project 2025–2026*
+*Department of  Information Technology · Final Year Project 2025–2026*
 
 <br/>
 
