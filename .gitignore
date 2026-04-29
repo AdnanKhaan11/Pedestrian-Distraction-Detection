@@ -16,7 +16,7 @@ youfocus/
 # 🧠 MODELS & ARTIFACTS
 # ================================
 artifacts/
-models/
+# models/
 *.pt
 *.pth
 *.ckpt

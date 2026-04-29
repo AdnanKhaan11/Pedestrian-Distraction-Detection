@@ -18,12 +18,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # ✅ Correct config import (renamed to avoid conflict)
-from app.config import settings as config_settings
+# from app.config import settings as config_settings
+from backend.app.config import settings as config_settings
 
-from app.database import Database
-from app.ml.pipeline import load_pipeline
-from app.utils.db_init import DatabaseInitializer
-from app.utils.seed_data import SeedData
+# from app.database import Database
+from backend.app.database import Database
+from backend.app.ml.pipeline import load_pipeline
+from backend.app.utils.db_init import DatabaseInitializer
+from backend.app.utils.seed_data import SeedData
 
 
 @asynccontextmanager
@@ -107,7 +109,7 @@ async def health_check():
 
 
 # ✅ IMPORTANT: rename settings router
-from app.routes import (
+from backend.app.routes import (
     alerts,
     dashboard,
     detect,
