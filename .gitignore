@@ -113,3 +113,10 @@ temp/
 # 🔥 OPTIONAL (UNCOMMENT IF NEEDED)
 # ================================
 # configs/*.yaml   # ⚠️ ONLY if configs contain secrets
+
+# Environment files
+backend/.env
+.env
+
+# Exclude entire frontend folder
+frontend/

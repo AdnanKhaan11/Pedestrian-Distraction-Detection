@@ -123,9 +123,19 @@ class InferencePipeline:
 
         return keypoints_list, xyxy_list, data_samples
 
-    def run_on_frame(self, frame: np.ndarray, draw_visualizer: bool = False) -> dict:
+    def run_on_frame(
+        self,
+        frame: np.ndarray,
+        draw_visualizer: bool = False,
+        runtime_parameters: dict | None = None,
+    ) -> dict:
         """
         Run full inference on one frame.
+
+        Args:
+            frame: Input frame as numpy array
+            draw_visualizer: Whether to draw visualization
+            runtime_parameters: Optional runtime state dict (maintains face announce timing across frames)
 
         Returns:
         {
@@ -152,11 +162,12 @@ class InferencePipeline:
                 kpt_thr=self.mmpose_config.visualizer.keypoint_threshold,
             )
 
-        runtime_parameters = {
-            "time_last_record_framerate": 0.0,
-            "time_last_announce_face": 0.0,
-            "path_runtime_handframes": None,
-        }
+        if runtime_parameters is None:
+            runtime_parameters = {
+                "time_last_record_framerate": 0.0,
+                "time_last_announce_face": 0.0,
+                "path_runtime_handframes": None,
+            }
 
         person_results = []
         for keypoints, xyxy in zip(keypoints_list, xyxy_list):
@@ -167,6 +178,7 @@ class InferencePipeline:
                 xyxy=xyxy,
                 runtime_parameters=runtime_parameters,
             )
+            one_result["xyxy"] = xyxy.tolist()
             person_results.append(one_result)
 
         result = {

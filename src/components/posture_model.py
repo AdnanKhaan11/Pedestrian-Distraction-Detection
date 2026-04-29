@@ -63,6 +63,11 @@ class PostureModelService:
             weight_path = self.config.weights.default_weight_file
 
         weight_path = Path(weight_path)
+        if not weight_path.is_absolute():
+            ROOT_DIR = Path(__file__).resolve().parents[2]
+            weight_path = ROOT_DIR / weight_path
+        weight_path = weight_path.resolve()
+        print("DEBUG PATH:", weight_path)
 
         if not weight_path.exists():
             raise FileNotFoundError(

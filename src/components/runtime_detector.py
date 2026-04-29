@@ -273,6 +273,7 @@ class RuntimeDetector:
 
         phone_detected = False
         announced_face_frame = None
+        face_xyxy = None
         phone_time = 0.0
 
         if posture_state == STATE_SUSPICIOUS:
@@ -341,6 +342,7 @@ class RuntimeDetector:
             "state": fusion_result["state"],
             "display_text": fusion_result["display_text"],
             "score_text": fusion_result["score_text"],
+            "face_xyxy": face_xyxy.tolist() if face_xyxy is not None else None,
         }
 
         self.logger.info("Runtime one-person result: %s", result)
