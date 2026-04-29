@@ -1,0 +1,104 @@
+"""
+Pydantic models for detection results.
+
+These models structure the ML pipeline output for API serialization and MongoDB storage.
+"""
+
+from datetime import datetime
+from uuid import uuid4
+
+from pydantic import BaseModel, Field
+
+
+class BoundingBox(BaseModel):
+    """Bounding box with absolute and normalized coordinates."""
+
+    x1: int = Field(..., description="Top-left X (pixels)")
+    y1: int = Field(..., description="Top-left Y (pixels)")
+    x2: int = Field(..., description="Bottom-right X (pixels)")
+    y2: int = Field(..., description="Bottom-right Y (pixels)")
+
+    x1_norm: float = Field(..., description="Normalized X1 (0.0-1.0)")
+    y1_norm: float = Field(..., description="Normalized Y1 (0.0-1.0)")
+    x2_norm: float = Field(..., description="Normalized X2 (0.0-1.0)")
+    y2_norm: float = Field(..., description="Normalized Y2 (0.0-1.0)")
+
+
+class FaceRegion(BaseModel):
+    """Face crop region coordinates."""
+
+    x1: int = Field(..., description="Top-left X (pixels)")
+    y1: int = Field(..., description="Top-left Y (pixels)")
+    x2: int = Field(..., description="Bottom-right X (pixels)")
+    y2: int = Field(..., description="Bottom-right Y (pixels)")
+
+
+class PedestrianResult(BaseModel):
+    """Result for one detected pedestrian."""
+
+    pedestrian_id: str = Field(
+        default_factory=lambda: str(uuid4()), description="Unique ID for this detection"
+    )
+
+    bbox: BoundingBox = Field(
+        ..., description="Bounding box with absolute and normalized coords"
+    )
+
+    posture_state: str = Field(..., description="GOOD, SUSPICIOUS, or USING")
+    posture_confidence: float = Field(
+        ..., ge=0.0, le=1.0, description="Confidence in posture classification"
+    )
+
+    phone_detected: bool = Field(
+        ..., description="Whether phone is detected in face/hand region"
+    )
+    phone_confidence: float = Field(
+        ..., ge=0.0, le=1.0, description="Confidence in phone detection"
+    )
+
+    fusion_state: str = Field(
+        ..., description="Final fused state from DistractionFusion"
+    )
+
+    face_region: FaceRegion | None = Field(
+        None, description="Face crop region, if detected"
+    )
+
+    is_violation: bool = Field(
+        ..., description="Whether this counts as a confirmed violation"
+    )
+
+
+class DetectionResult(BaseModel):
+    """Complete detection result for one frame."""
+
+    detection_id: str = Field(
+        default_factory=lambda: str(uuid4()), description="Unique detection ID"
+    )
+    timestamp: datetime = Field(
+        default_factory=datetime.utcnow, description="Detection timestamp"
+    )
+    session_id: str = Field(..., description="Session/camera ID")
+    frame_id: int = Field(..., ge=0, description="Frame sequence number in session")
+
+    is_violation: bool = Field(..., description="Whether frame contains any violations")
+    overall_confidence: float = Field(
+        ..., ge=0.0, le=1.0, description="Overall detection confidence"
+    )
+
+    processing_time_ms: float = Field(
+        ..., ge=0, description="Time to process frame in milliseconds"
+    )
+
+    pedestrians: list[PedestrianResult] = Field(
+        default_factory=list, description="Results for all detected pedestrians"
+    )
+
+    error_message: str | None = Field(
+        None, description="Error message if processing failed"
+    )
+
+    class Config:
+        """Pydantic config."""
+
+        json_encoders = {datetime: lambda v: v.isoformat()}
