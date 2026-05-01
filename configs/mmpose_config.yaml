@@ -12,7 +12,7 @@ mmpose:
   device_preference: "auto"   # auto, cpu, cuda
 
   detector:
-    config_file: "model_config/configs/rtmdet_nano_320-8xb32_coco-person.py"
+    config_file: "artifacts/mmpose/configs/rtmdet_nano_320-8xb32_coco-person.py"
     checkpoint_file: "artifacts/mmpose/checkpoints/rtmdet_nano_8xb32-100e_coco-obj365-person-05d8511e.pth"
     category_id: 0
     bbox_threshold_multi_person: 0.30
@@ -20,7 +20,7 @@ mmpose:
     nms_threshold: 0.30
 
   pose_estimator:
-    config_file: "model_config/configs/rtmpose-t_8xb256-420e_coco-256x192.py"
+    config_file: "artifacts/mmpose/configs/rtmpose-tiny_simcc-aic-coco_pt-aic-coco_420e-256x192.py"
     checkpoint_file: "artifacts/mmpose/checkpoints/rtmpose-tiny_simcc-aic-coco_pt-aic-coco_420e-256x192-cfc8f33d_20230126.pth"
 
   visualizer:

@@ -17,6 +17,9 @@ from src.config.configuration import ConfigurationManager
 from src.pipeline.phone_training_pipeline import PhoneTrainingPipeline
 from src.utils.common import create_directories, seed_everything
 from src.utils.logger import get_logger
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def parse_args():

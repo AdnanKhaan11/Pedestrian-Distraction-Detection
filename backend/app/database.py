@@ -12,7 +12,7 @@ from typing import Optional
 # from motor.motor_asyncio import AsyncClient, AsyncDatabase
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
-from backend.app.config import settings
+from app.config import settings
 
 
 from pymongo import MongoClient

@@ -126,6 +126,12 @@ class DashboardService:
             },
             {"$unwind": "$pedestrians"},
             {
+                "$match": {
+                    "pedestrians.is_violation": True,
+                    "pedestrians.face_id": {"$exists": True, "$nin": [None, ""]},
+                }
+            },
+            {
                 "$group": {
                     "_id": "$pedestrians.face_id",
                 }

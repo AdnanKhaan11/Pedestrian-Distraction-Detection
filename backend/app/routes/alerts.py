@@ -111,7 +111,7 @@ async def list_alerts(
         # Convert _id to alert_id
         alert_list = []
         for alert in alerts:
-            alert["alert_id"] = alert.pop("_id")
+            alert["alert_id"] = str(alert.pop("_id"))
             alert_list.append(alert)
 
         return {

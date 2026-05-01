@@ -63,6 +63,9 @@ class PedestrianResult(BaseModel):
     face_region: FaceRegion | None = Field(
         None, description="Face crop region, if detected"
     )
+    face_id: str | None = Field(
+        None, description="Resolved face ID for this pedestrian, if available"
+    )
 
     is_violation: bool = Field(
         ..., description="Whether this counts as a confirmed violation"

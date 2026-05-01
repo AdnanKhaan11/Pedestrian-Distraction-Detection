@@ -5,6 +5,10 @@ This is cleaner than keeping training logic inside notebooks or mixed scripts.
 It is also better for MLflow, DAGsHub tracking, and repeatable execution.
 """
 
+from dotenv import load_dotenv
+
+load_dotenv()  # ← add this BEFORE everything else
+
 import sys
 from pathlib import Path
 

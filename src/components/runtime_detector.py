@@ -342,7 +342,12 @@ class RuntimeDetector:
             "state": fusion_result["state"],
             "display_text": fusion_result["display_text"],
             "score_text": fusion_result["score_text"],
-            "face_xyxy": face_xyxy.tolist() if face_xyxy is not None else None,
+            # "face_xyxy": face_xyxy.tolist() if face_xyxy is not None else None,
+            "face_xyxy": (
+                face_xyxy.tolist()
+                if hasattr(face_xyxy, "tolist")
+                else face_xyxy if face_xyxy is not None else None
+            ),
         }
 
         self.logger.info("Runtime one-person result: %s", result)

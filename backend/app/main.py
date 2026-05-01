@@ -12,20 +12,24 @@ Initializes:
 - Run with Uvicorn
 """
 
+import sys
+from pathlib import Path
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# ✅ Correct config import (renamed to avoid conflict)
-# from app.config import settings as config_settings
-from backend.app.config import settings as config_settings
+# ✅ Add project root to path so src/ imports work when running from backend/
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
 
-# from app.database import Database
-from backend.app.database import Database
-from backend.app.ml.pipeline import load_pipeline
-from backend.app.utils.db_init import DatabaseInitializer
-from backend.app.utils.seed_data import SeedData
+# ✅ Correct config import (renamed to avoid conflict)
+from app.config import settings as config_settings
+
+from app.database import Database
+from app.ml.pipeline import load_pipeline
+from app.utils.db_init import DatabaseInitializer
+from app.utils.seed_data import SeedData
 
 
 @asynccontextmanager
@@ -109,7 +113,7 @@ async def health_check():
 
 
 # ✅ IMPORTANT: rename settings router
-from backend.app.routes import (
+from app.routes import (
     alerts,
     dashboard,
     detect,

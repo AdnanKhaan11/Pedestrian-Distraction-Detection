@@ -28,6 +28,7 @@ class TrainingJobManager:
 
     _instance: Optional["TrainingJobManager"] = None
     _current_job_id: Optional[str] = None
+    _current_process: Optional[Any] = None
     _websocket_clients: list[Any] = []  # WebSocket connections
     _lock = asyncio.Lock()
 
@@ -51,6 +52,25 @@ class TrainingJobManager:
         """Mark no job is running."""
         async with self._lock:
             self._current_job_id = None
+
+    async def set_current_process(self, process: Any):
+        """Track the active training subprocess."""
+        async with self._lock:
+            self._current_process = process
+
+    async def clear_current_process(self):
+        """Forget the active training subprocess."""
+        async with self._lock:
+            self._current_process = None
+
+    async def terminate_current_process(self) -> bool:
+        """Terminate the active training subprocess if it is still running."""
+        async with self._lock:
+            process = self._current_process
+            if process is None or process.returncode is not None:
+                return False
+            process.terminate()
+            return True
 
     async def get_current_job_id(self) -> Optional[str]:
         """Get ID of currently running job."""
@@ -102,7 +122,7 @@ class TrainingService:
         if not job_id:
             return None
 
-        job = await db.training_logs.find_one({"job_id": job_id})
+        job = await db.training_logs.find_one({"_id": job_id})
         return job
 
     @staticmethod
@@ -153,8 +173,10 @@ class TrainingService:
         )
 
         # Insert into MongoDB
-        result = await db.training_logs.insert_one(job.dict())
-        job_id = result.inserted_id
+        job_data = job.dict()
+        job_data["_id"] = job.job_id
+        await db.training_logs.insert_one(job_data)
+        job_id = job.job_id
 
         # Set as current job
         await manager.set_current_job(job_id)
@@ -187,7 +209,7 @@ class TrainingService:
             error_msg = f"Training script not found: {script_path}"
             print(f"❌ {error_msg}")
             await db.training_logs.update_one(
-                {"job_id": job_id},
+                {"_id": job_id},
                 {
                     "$set": {
                         "status": "error",
@@ -216,6 +238,7 @@ class TrainingService:
                 stderr=asyncio.subprocess.STDOUT,  # Redirect stderr to stdout
                 cwd=str(TrainingService.SCRIPTS_DIR.parent),
             )
+            await manager.set_current_process(process)
 
             # Capture output line by line
             logs = []
@@ -237,6 +260,7 @@ class TrainingService:
 
                 # Store raw log
                 logs.append(line_str)
+                logs = logs[-500:]
 
                 # Try to parse progress from log line
                 # Look for patterns like "Epoch 5/50" or "accuracy: 0.78"
@@ -275,7 +299,7 @@ class TrainingService:
                     (current_epoch / total_epochs * 100) if total_epochs > 0 else 0
                 )
                 await db.training_logs.update_one(
-                    {"job_id": job_id},
+                    {"_id": job_id},
                     {
                         "$set": {
                             "current_epoch": current_epoch,
@@ -300,7 +324,7 @@ class TrainingService:
 
                 # Update job as completed
                 await db.training_logs.update_one(
-                    {"job_id": job_id},
+                    {"_id": job_id},
                     {
                         "$set": {
                             "status": "completed",
@@ -324,7 +348,7 @@ class TrainingService:
                 await manager.broadcast_log(error_log)
 
                 await db.training_logs.update_one(
-                    {"job_id": job_id},
+                    {"_id": job_id},
                     {
                         "$set": {
                             "status": "error",
@@ -343,7 +367,7 @@ class TrainingService:
             await manager.broadcast_log(error_log)
 
             await db.training_logs.update_one(
-                {"job_id": job_id},
+                {"_id": job_id},
                 {
                     "$set": {
                         "status": "error",
@@ -355,6 +379,7 @@ class TrainingService:
             )
 
         finally:
+            await manager.clear_current_process()
             await manager.clear_current_job()
 
     @staticmethod
@@ -386,9 +411,12 @@ class TrainingService:
         if not job_id:
             return False
 
+        # Terminate the subprocess (critical fix)
+        process_terminated = await manager.terminate_current_process()
+
         # Update status to cancelled
         await db.training_logs.update_one(
-            {"job_id": job_id},
+            {"_id": job_id},
             {
                 "$set": {
                     "status": "cancelled",
@@ -398,9 +426,13 @@ class TrainingService:
         )
 
         # Broadcast cancellation
-        log = TrainingLog(type="log", message="Training cancelled by user")
+        message = "Training cancelled by user"
+        if not process_terminated:
+            message += " (no running subprocess found)"
+        log = TrainingLog(type="log", message=message)
         await manager.broadcast_log(log)
 
+        await manager.clear_current_process()
         await manager.clear_current_job()
 
         return True

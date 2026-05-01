@@ -94,7 +94,7 @@ class PhoneTrainer:
                 epochs=self.training_config.phone_training.hyperparameters.epochs,
                 imgsz=self.training_config.phone_training.hyperparameters.image_size,
                 batch=self.training_config.phone_training.hyperparameters.batch_size,
-                device=self.training_config.general.device_preference,
+                device="cpu",  # self.training_config.general.device_preference,
             )
 
             summary = {

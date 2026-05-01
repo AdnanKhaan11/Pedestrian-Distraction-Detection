@@ -71,6 +71,9 @@ async def websocket_stream(websocket: WebSocket):
 
     try:
         while True:
+            # Add backpressure throttling to prevent client overload
+            await asyncio.sleep(0.03)  # ~33 FPS max
+
             # Receive frame
             try:
                 data = await websocket.receive_text()

@@ -19,7 +19,7 @@ project:
   random_seed: 42
 
 system:
-  device: "auto"          # auto, cpu, cuda
+  device: "cpu"          # auto, cpu, cuda
   num_workers: 0          # keep 0 for Windows safety
   pin_memory: false
   log_level: "INFO"

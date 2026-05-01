@@ -34,7 +34,7 @@ paths:
   raw_video_dir: "data/raw/videos"
   raw_image_dir: "data/raw/images"
 
-  posture_feature_dir: "data/processed/posture_features"
+  posture_feature_dir: "data/processed/posture_features/3dnpy"
   hand_crop_dir: "data/processed/hand_crops"
   phone_dataset_dir: "data/processed/phone_dataset"
 

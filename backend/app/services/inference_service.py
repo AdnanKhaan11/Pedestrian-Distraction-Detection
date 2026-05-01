@@ -14,7 +14,6 @@ Handles:
 import asyncio
 import base64
 import time
-from io import BytesIO
 from typing import Any
 
 import cv2
@@ -29,24 +28,36 @@ from app.models.detection import (
     PedestrianResult,
 )
 from app.services.alert_service import AlertService
+from app.services.dashboard_service import DashboardService
 from app.services.face_service import FaceService
 
 
 class InferenceService:
     """Service for running inference and storing results."""
 
-    # Per-session runtime state (maintains across frames for face announce interval)
+    SESSION_TTL_SECONDS = 1800
     _session_runtime_params: dict[str, dict] = {}
 
     @classmethod
     def _get_session_runtime_params(cls, session_id: str) -> dict:
         """Get or create runtime parameters for a session."""
+        now = time.time()
+        expired_sessions = [
+            key
+            for key, value in cls._session_runtime_params.items()
+            if now - value.get("last_accessed_at", 0.0) > cls.SESSION_TTL_SECONDS
+        ]
+        for key in expired_sessions:
+            cls._session_runtime_params.pop(key, None)
+
         if session_id not in cls._session_runtime_params:
             cls._session_runtime_params[session_id] = {
                 "time_last_record_framerate": 0.0,
                 "time_last_announce_face": 0.0,
                 "path_runtime_handframes": None,
+                "last_accessed_at": now,
             }
+        cls._session_runtime_params[session_id]["last_accessed_at"] = now
         return cls._session_runtime_params[session_id]
 
     @staticmethod
@@ -59,16 +70,41 @@ class InferenceService:
         """
         if isinstance(value, np.ndarray):
             return value.tolist()
-        elif isinstance(value, (np.floating, np.integer)):
+        if isinstance(value, (np.floating, np.integer)):
             return value.item()
-        elif isinstance(value, dict):
+        if isinstance(value, dict):
             return {
                 k: InferenceService._convert_to_python_type(v) for k, v in value.items()
             }
-        elif isinstance(value, (list, tuple)):
+        if isinstance(value, (list, tuple)):
             return [InferenceService._convert_to_python_type(v) for v in value]
-        else:
-            return value
+        return value
+
+    @staticmethod
+    async def _enrich_violation_pedestrian(
+        frame: np.ndarray | None,
+        detection: DetectionResult,
+        pedestrian: PedestrianResult,
+    ) -> None:
+        """Resolve face linkage before creating alerts and saving detections."""
+        face_id = None
+
+        if frame is not None:
+            try:
+                face_id = await FaceService.process_face(frame, pedestrian, detection)
+            except Exception as e:
+                print(f"Warning: face processing error: {e}")
+
+        pedestrian.face_id = face_id
+
+        try:
+            await AlertService.create_alert(
+                detection_result=detection,
+                pedestrian=pedestrian,
+                face_id=face_id,
+            )
+        except Exception as e:
+            print(f"Warning: alert creation error: {e}")
 
     @staticmethod
     def decode_base64_frame(frame_base64: str) -> tuple[np.ndarray, tuple[int, int]]:
@@ -85,9 +121,7 @@ class InferenceService:
             ValueError: If decoding fails
         """
         try:
-            # Decode from base64
             frame_bytes = base64.b64decode(frame_base64)
-            # Read JPEG
             frame_array = cv2.imdecode(
                 np.frombuffer(frame_bytes, np.uint8), cv2.IMREAD_COLOR
             )
@@ -100,17 +134,7 @@ class InferenceService:
 
     @staticmethod
     def _compute_normalized_bbox(xyxy: list, height: int, width: int) -> BoundingBox:
-        """
-        Convert pixel coordinates to normalized coordinates.
-
-        Args:
-            xyxy: [x1, y1, x2, y2] in pixels
-            height: Frame height in pixels
-            width: Frame width in pixels
-
-        Returns:
-            BoundingBox with both absolute and normalized coordinates
-        """
+        """Convert pixel coordinates to normalized coordinates."""
         x1, y1, x2, y2 = xyxy
         x1 = int(x1)
         y1 = int(y1)
@@ -137,22 +161,10 @@ class InferenceService:
     def _build_pedestrian_result(
         person_result: dict, height: int, width: int
     ) -> PedestrianResult:
-        """
-        Map raw ML pipeline output to PedestrianResult Pydantic model.
-
-        Args:
-            person_result: Raw dict from pipeline.run_on_frame()["person_results"][i]
-            height: Frame height
-            width: Frame width
-
-        Returns:
-            PedestrianResult instance
-        """
-        # Extract bounding box (Phase 11 Fix 1 added this)
+        """Map raw ML pipeline output to PedestrianResult."""
         xyxy = person_result.get("xyxy", [0, 0, 100, 100])
         bbox = InferenceService._compute_normalized_bbox(xyxy, height, width)
 
-        # Extract face region (Phase 11 Fix 2 added this)
         face_xyxy = person_result.get("face_xyxy")
         face_region = None
         if face_xyxy is not None:
@@ -160,22 +172,27 @@ class InferenceService:
                 x1, y1, x2, y2 = face_xyxy
                 face_region = FaceRegion(x1=int(x1), y1=int(y1), x2=int(x2), y2=int(y2))
             except (ValueError, TypeError):
-                pass  # Invalid face region, skip
+                pass
 
-        # Determine if violation
         posture_state = person_result.get("posture", "GOOD")
         phone_detected = person_result.get("phone", False)
         fusion_state = person_result.get("state", "NORMAL")
-
-        # Violation if fusion says USING (confirmed phone usage)
         is_violation = fusion_state == "USING"
+
+        # Get real confidence from pipeline output, fallback to reasonable defaults
+        posture_confidence = person_result.get("posture_confidence", 0.85)
+        phone_confidence = person_result.get("phone_confidence", 0.90)
+
+        # Validate confidence values are in [0, 1]
+        posture_confidence = max(0.0, min(1.0, float(posture_confidence)))
+        phone_confidence = max(0.0, min(1.0, float(phone_confidence)))
 
         return PedestrianResult(
             bbox=bbox,
             posture_state=posture_state,
-            posture_confidence=0.85,  # Placeholder, not provided by pipeline
+            posture_confidence=posture_confidence,
             phone_detected=phone_detected,
-            phone_confidence=0.90,  # Placeholder
+            phone_confidence=phone_confidence,
             fusion_state=fusion_state,
             face_region=face_region,
             is_violation=is_violation,
@@ -187,23 +204,9 @@ class InferenceService:
         session_id: str,
         frame_id: int = 0,
     ) -> DetectionResult:
-        """
-        Run full inference pipeline on a frame and store result.
-
-        Args:
-            frame_base64: Base64-encoded JPEG frame
-            session_id: Camera/session identifier
-            frame_id: Frame sequence number
-
-        Returns:
-            DetectionResult Pydantic model
-
-        Raises:
-            ValueError: If frame decoding fails
-        """
+        """Run full inference pipeline on a frame and store the result."""
         start_time = time.time()
 
-        # Get pipeline from Database class (set during app startup)
         if not Database.app or not hasattr(Database.app.state, "pipeline"):
             return DetectionResult(
                 session_id=session_id,
@@ -216,7 +219,6 @@ class InferenceService:
 
         pipeline = Database.app.state.pipeline
 
-        # Decode frame
         try:
             frame, (height, width) = self.decode_base64_frame(frame_base64)
         except ValueError as e:
@@ -229,16 +231,21 @@ class InferenceService:
                 error_message=str(e),
             )
 
-        # Get runtime parameters for this session (maintains state across frames)
         runtime_params = self._get_session_runtime_params(session_id)
 
-        # Run ML pipeline
         try:
             ml_result = pipeline.pipeline.run_on_frame(
                 frame=frame,
                 draw_visualizer=False,
                 runtime_parameters=runtime_params,
             )
+
+            # Validate pipeline output format
+            if not isinstance(ml_result, dict):
+                raise ValueError(f"Pipeline returned non-dict: {type(ml_result)}")
+            if "person_results" not in ml_result:
+                raise ValueError("Pipeline output missing 'person_results' key")
+
         except Exception as e:
             processing_time = (time.time() - start_time) * 1000
             return DetectionResult(
@@ -250,7 +257,6 @@ class InferenceService:
                 error_message=f"ML pipeline error: {str(e)}",
             )
 
-        # Map to Pydantic models
         pedestrians = []
         overall_confidence = 0.0
 
@@ -259,14 +265,10 @@ class InferenceService:
                 ped = self._build_pedestrian_result(person_result, height, width)
                 pedestrians.append(ped)
 
-                # Track highest confidence for overall
                 if ped.is_violation:
                     overall_confidence = max(overall_confidence, ped.phone_confidence)
 
-        # Determine if frame contains any violations
         is_violation = any(p.is_violation for p in pedestrians)
-
-        # Build DetectionResult
         processing_time = (time.time() - start_time) * 1000
 
         detection = DetectionResult(
@@ -278,35 +280,17 @@ class InferenceService:
             pedestrians=pedestrians,
         )
 
-        # Process faces for violations (fire-and-forget, don't block)
-        if is_violation and frame is not None:
-            for ped in pedestrians:
-                if ped.is_violation:
-                    try:
-                        # Don't await face processing - let it happen in background
-                        # to avoid blocking detection response
-                        asyncio.create_task(
-                            FaceService.process_face(frame, ped, detection)
-                        )
-                    except Exception as e:
-                        print(f"⚠️  Face processing error: {e}")
-
-        # Create alerts for violations (fire-and-forget, don't block)
+        # CRITICAL FIX: Enrich violation pedestrians (modifies pedestrians in-place with face_id)
+        # This must happen BEFORE storing to DB to ensure face_id is in the document
         if is_violation:
-            for ped in pedestrians:
-                if ped.is_violation:
-                    try:
-                        asyncio.create_task(
-                            AlertService.create_alert(
-                                detection_result=detection,
-                                pedestrian=ped,
-                                face_id=None,  # Will be set by face service if needed
-                            )
-                        )
-                    except Exception as e:
-                        print(f"⚠️  Alert creation error: {e}")
+            violation_tasks = [
+                self._enrich_violation_pedestrian(frame, detection, ped)
+                for ped in pedestrians
+                if ped.is_violation
+            ]
+            if violation_tasks:
+                await asyncio.gather(*violation_tasks)
 
-        # Save to MongoDB
         try:
             db: AsyncIOMotorDatabase = Database.get_database()
             await db.detections.insert_one(
@@ -322,8 +306,8 @@ class InferenceService:
                     "error_message": detection.error_message,
                 }
             )
+            DashboardService.clear_cache()
         except Exception as e:
-            # Log but don't fail the response
-            print(f"⚠️  Failed to save detection to MongoDB: {e}")
+            print(f"Warning: failed to save detection to MongoDB: {e}")
 
         return detection
