@@ -12,6 +12,7 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
+from app.database import Database
 from app.models.training import TrainRequest, TrainingStatus
 from app.services.training_service import TrainingJobManager, TrainingService
 
@@ -149,12 +150,15 @@ async def get_training_history(
     }
     ```
     """
-    jobs = await TrainingService.get_training_history(limit=limit)
-
-    return {
-        "total": len(jobs),
-        "jobs": jobs,
-    }
+    try:
+        db = Database.get_database()
+        cursor = db.training_logs.find({}).sort("started_at", -1).limit(limit)
+        history = await cursor.to_list(length=limit)
+        for item in history:
+            item["_id"] = str(item["_id"])
+        return {"history": history, "total": len(history)}
+    except Exception as e:
+        return {"history": [], "total": 0, "error": str(e)}
 
 
 @router.delete("/api/train/current")

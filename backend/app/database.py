@@ -1,4 +1,4 @@
-"""
+﻿"""
 MongoDB database connection using Motor (async driver).
 
 Provides:
@@ -53,10 +53,10 @@ class Database:
 
             # Verify connection with a ping
             await cls.database.command("ping")
-            print(f"✅ Connected to MongoDB: {settings.DB_NAME}")
+            print(f"Connected to MongoDB: {settings.DB_NAME}")
 
         except Exception as e:
-            print(f"❌ MongoDB connection failed: {e}")
+            print(f"MongoDB connection failed: {e}")
             raise
 
     @classmethod
@@ -68,7 +68,7 @@ class Database:
         """
         if cls.client:
             cls.client.close()
-            print("✅ Disconnected from MongoDB")
+            print("Disconnected from MongoDB")
 
     @classmethod
     def get_database(cls) -> AsyncIOMotorDatabase:
@@ -95,3 +95,4 @@ async def get_db() -> AsyncIOMotorDatabase:
             ...
     """
     return Database.get_database()
+

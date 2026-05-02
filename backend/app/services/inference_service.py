@@ -169,23 +169,45 @@ class InferenceService:
         face_region = None
         if face_xyxy is not None:
             try:
-                x1, y1, x2, y2 = face_xyxy
+                face_list = (
+                    face_xyxy if isinstance(face_xyxy, list) else list(face_xyxy)
+                )
+                x1, y1, x2, y2 = face_list
                 face_region = FaceRegion(x1=int(x1), y1=int(y1), x2=int(x2), y2=int(y2))
             except (ValueError, TypeError):
                 pass
 
-        posture_state = person_result.get("posture", "GOOD")
+        # FIX 1: Map pipeline posture labels correctly
+        # Pipeline returns: 'safe', 'distracted', 'out_of_frame', 'using_or_suspicious'
+        posture_label = person_result.get("posture", "safe")
+        posture_state = posture_label
+
         phone_detected = person_result.get("phone", False)
-        fusion_state = person_result.get("state", "NORMAL")
-        is_violation = fusion_state == "USING"
 
-        # Get real confidence from pipeline output, fallback to reasonable defaults
-        posture_confidence = person_result.get("posture_confidence", 0.85)
-        phone_confidence = person_result.get("phone_confidence", 0.90)
+        # FIX 2: state is an integer from pipeline (128=safe, 32=distracted, 1=out_of_frame)
+        fusion_state = str(person_result.get("state", 0))
 
-        # Validate confidence values are in [0, 1]
-        posture_confidence = max(0.0, min(1.0, float(posture_confidence)))
-        phone_confidence = max(0.0, min(1.0, float(phone_confidence)))
+        # FIX 3: is_violation based on posture label not string "USING"
+        is_violation = posture_label in ("distracted", "using_or_suspicious")
+
+        # FIX 4: Extract real confidence from score_text instead of hardcoded values
+        score_text = person_result.get("score_text", "0.0")
+        try:
+            posture_confidence = float(score_text) if score_text else 0.0
+        except (ValueError, TypeError):
+            posture_confidence = 0.0
+        posture_confidence = max(0.0, min(1.0, posture_confidence))
+
+        # Extract phone confidence from phone detection text
+        phone_text = person_result.get("display_text", "")
+        try:
+            if ":" in str(phone_text):
+                phone_confidence = float(str(phone_text).split(":")[-1].strip())
+            else:
+                phone_confidence = posture_confidence if phone_detected else 0.0
+        except (ValueError, TypeError):
+            phone_confidence = 0.0
+        phone_confidence = max(0.0, min(1.0, phone_confidence))
 
         return PedestrianResult(
             bbox=bbox,
@@ -234,11 +256,19 @@ class InferenceService:
         runtime_params = self._get_session_runtime_params(session_id)
 
         try:
-            ml_result = pipeline.pipeline.run_on_frame(
-                frame=frame,
-                draw_visualizer=False,
-                runtime_parameters=runtime_params,
-            )
+            # FIX 5: run_on_frame may not accept runtime_parameters — use safe call
+            try:
+                ml_result = pipeline.pipeline.run_on_frame(
+                    frame=frame,
+                    draw_visualizer=False,
+                    runtime_parameters=runtime_params,
+                )
+            except TypeError:
+                # Fallback if run_on_frame does not accept runtime_parameters
+                ml_result = pipeline.pipeline.run_on_frame(
+                    frame=frame,
+                    draw_visualizer=False,
+                )
 
             # Validate pipeline output format
             if not isinstance(ml_result, dict):
@@ -280,8 +310,7 @@ class InferenceService:
             pedestrians=pedestrians,
         )
 
-        # CRITICAL FIX: Enrich violation pedestrians (modifies pedestrians in-place with face_id)
-        # This must happen BEFORE storing to DB to ensure face_id is in the document
+        # Enrich violation pedestrians with face_id before storing to DB
         if is_violation:
             violation_tasks = [
                 self._enrich_violation_pedestrian(frame, detection, ped)

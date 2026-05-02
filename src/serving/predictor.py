@@ -96,3 +96,39 @@ class Predictor:
         save_json(self.paths_config.metrics_dir / "latest_prediction.json", response)
         self.logger.info("Prediction response: %s", response)
         return response
+
+    def predict_video(
+        self, video_path: Path, frame_step: int = 10, save_rendered_output: bool = True
+    ) -> dict:
+        video_path = Path(video_path)
+        if not video_path.exists():
+            raise FileNotFoundError(f"Video not found: {video_path}")
+
+        cap = cv2.VideoCapture(str(video_path))
+        frame_count = 0
+        saved_count = 0
+        all_results = []
+
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            if frame_count % frame_step == 0:
+                result = self.pipeline.run_on_frame(frame=frame, draw_visualizer=False)
+                if save_rendered_output:
+                    out_name = f"pred_{video_path.stem}_frame{saved_count:04d}.jpg"
+                    out_path = self.paths_config.frontend_result_dir / out_name
+                    cv2.imwrite(str(out_path), result["frame"])
+                all_results.append(
+                    {
+                        "frame_index": frame_count,
+                        "num_persons": result["num_persons"],
+                        "person_results": result["person_results"],
+                    }
+                )
+                saved_count += 1
+            frame_count += 1
+
+        cap.release()
+        self.logger.info("Video inference done. Frames processed: %s", saved_count)
+        return {"total_frames_processed": saved_count, "results": all_results}

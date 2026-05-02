@@ -8,6 +8,7 @@ All backend-specific settings are defined here.
 from pathlib import Path
 from typing import List
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -106,6 +107,23 @@ class Settings(BaseSettings):
     # Debug Configuration
     # =====================================================
     DEBUG: bool = False
+
+    @field_validator("DEBUG", mode="before")
+    @classmethod
+    def normalize_debug_value(cls, value):
+        """Treat non-boolean DEBUG env values as disabled instead of crashing."""
+        if isinstance(value, bool):
+            return value
+        if value is None:
+            return False
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"1", "true", "yes", "on"}:
+                return True
+            if normalized in {"0", "false", "no", "off", ""}:
+                return False
+            return False
+        return bool(value)
 
     class Config:
         """Pydantic config for Settings."""

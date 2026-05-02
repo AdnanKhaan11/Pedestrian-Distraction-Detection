@@ -202,7 +202,14 @@ Step 5 → python -c "from src.components.mmpose_loader import MMPoseLoader"
 
 ## Run Inference
 
+**for Image**
+
 ```bash
 python scripts/run_inference.py --image "path/to/any/image.jpg"
+```
+
+**for video:**
+```bash
+python scripts/run_inference.py --video "path_of_your_video\your_video.mp4" --frame-step 10
 ```
 
