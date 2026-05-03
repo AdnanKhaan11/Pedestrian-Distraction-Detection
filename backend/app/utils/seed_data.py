@@ -33,7 +33,7 @@ class SeedData:
 
         # Default settings document
         default_settings = {
-            "_id": "system_settings",
+            "_id": "default",
             "detection_confidence_threshold": 0.75,
             "alert_confidence_threshold": 0.80,
             "face_similarity_threshold": 0.85,
@@ -43,7 +43,7 @@ class SeedData:
             "active_model": "posture_classifier_v1",
             "camera_resolution": "640x480",
             "max_concurrent_cameras": 4,
-            "frame_interval_ms": 500,
+            "frame_sample_rate": 2,
             # Alert severity thresholds
             "alert_high_posture_confidence": 0.90,
             "alert_high_phone_required": True,

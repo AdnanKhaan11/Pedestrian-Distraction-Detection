@@ -158,6 +158,14 @@ class InferenceService:
         )
 
     @staticmethod
+    def _encode_frame_base64(frame: np.ndarray) -> str:
+        """Encode the annotated frame as a base64 JPEG string."""
+        success, encoded = cv2.imencode(".jpg", frame)
+        if not success:
+            raise ValueError("Failed to encode annotated frame")
+        return base64.b64encode(encoded.tobytes()).decode("utf-8")
+
+    @staticmethod
     def _build_pedestrian_result(
         person_result: dict, height: int, width: int
     ) -> PedestrianResult:
@@ -236,6 +244,7 @@ class InferenceService:
                 is_violation=False,
                 overall_confidence=0.0,
                 processing_time_ms=0.0,
+                annotated_frame_base64=None,
                 error_message="ML pipeline not loaded",
             )
 
@@ -250,6 +259,7 @@ class InferenceService:
                 is_violation=False,
                 overall_confidence=0.0,
                 processing_time_ms=0.0,
+                annotated_frame_base64=None,
                 error_message=str(e),
             )
 
@@ -284,6 +294,7 @@ class InferenceService:
                 is_violation=False,
                 overall_confidence=0.0,
                 processing_time_ms=processing_time,
+                annotated_frame_base64=None,
                 error_message=f"ML pipeline error: {str(e)}",
             )
 
@@ -300,6 +311,11 @@ class InferenceService:
 
         is_violation = any(p.is_violation for p in pedestrians)
         processing_time = (time.time() - start_time) * 1000
+        annotated_frame_base64 = None
+        try:
+            annotated_frame_base64 = self._encode_frame_base64(ml_result["frame"])
+        except Exception as e:
+            print(f"Warning: failed to encode annotated frame: {e}")
 
         detection = DetectionResult(
             session_id=session_id,
@@ -308,6 +324,7 @@ class InferenceService:
             overall_confidence=overall_confidence,
             processing_time_ms=processing_time,
             pedestrians=pedestrians,
+            annotated_frame_base64=annotated_frame_base64,
         )
 
         # Enrich violation pedestrians with face_id before storing to DB

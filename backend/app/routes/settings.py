@@ -16,6 +16,22 @@ from app.models.settings import Settings
 router = APIRouter(prefix="/api/settings", tags=["Settings"])
 
 SETTINGS_ID = "default"  # Singleton document ID
+LEGACY_SETTINGS_ID = "system_settings"
+
+
+async def _get_or_migrate_settings_doc(db):
+    settings_doc = await db.settings.find_one({"_id": SETTINGS_ID})
+    if settings_doc:
+        return settings_doc
+
+    legacy_doc = await db.settings.find_one({"_id": LEGACY_SETTINGS_ID})
+    if not legacy_doc:
+        return None
+
+    migrated_doc = {**legacy_doc, "_id": SETTINGS_ID}
+    await db.settings.replace_one({"_id": SETTINGS_ID}, migrated_doc, upsert=True)
+    await db.settings.delete_one({"_id": LEGACY_SETTINGS_ID})
+    return migrated_doc
 
 
 @router.get("")
@@ -43,7 +59,7 @@ async def get_settings() -> Settings:
     """
     db = Database.get_database()
 
-    settings_doc = await db.settings.find_one({"_id": SETTINGS_ID})
+    settings_doc = await _get_or_migrate_settings_doc(db)
 
     if not settings_doc:
         # Return defaults (shouldn't happen if seed_data ran, but handle gracefully)
@@ -94,11 +110,12 @@ async def update_settings(settings: Settings) -> dict[str, Any]:
         "updated_at": datetime.utcnow(),
     }
 
-    result = await db.settings.update_one(
+    await db.settings.update_one(
         {"_id": SETTINGS_ID},
         {"$set": settings_doc},
         upsert=True,  # Create if doesn't exist, update if exists
     )
+    await db.settings.delete_one({"_id": LEGACY_SETTINGS_ID})
 
     return {
         "success": True,
