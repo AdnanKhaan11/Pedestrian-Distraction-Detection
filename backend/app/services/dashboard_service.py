@@ -83,7 +83,7 @@ class DashboardService:
         - violations_today: total violations since midnight UTC
         - unresolved_alerts: count of unresolved alerts
         - unique_violators_today: distinct face_ids with violations today
-        - active_devices: count of devices
+        - active_violators: recent violating detections in the last hour
         - system_status: "online" (always, for now)
         - model_status: "loaded" (always, for now)
         - last_updated: current timestamp
@@ -145,15 +145,21 @@ class DashboardService:
             unique_violators_result[0]["unique_faces"] if unique_violators_result else 0
         )
 
-        # Query 5: Active devices (count devices where is_active=True)
-        active_devices = await db.devices.count_documents({"is_active": True})
+        # Query 5: Active violators in the last hour
+        recent_cutoff = now - timedelta(hours=1)
+        active_violators = await db.detections.count_documents(
+            {
+                "timestamp": {"$gte": recent_cutoff},
+                "is_violation": True,
+            }
+        )
 
         stats = {
             "detections_today": detections_today,
             "violations_today": violations_today,
             "unresolved_alerts": unresolved_alerts,
             "unique_violators_today": unique_violators,
-            "active_devices": active_devices,
+            "active_violators": active_violators,
             "system_status": "online",
             "model_status": "loaded",
             "last_updated": datetime.utcnow().isoformat(),

@@ -12,12 +12,16 @@ Initializes:
 - Run with Uvicorn
 """
 
+import asyncio
 import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 # Add project root to path so src/ imports work when running from backend/
 project_root = Path(__file__).parent.parent.parent

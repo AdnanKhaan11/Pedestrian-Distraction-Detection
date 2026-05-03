@@ -26,7 +26,7 @@ async def get_dashboard_stats() -> dict[str, Any]:
       "violations_today": 8,
       "unresolved_alerts": 3,
       "unique_violators_today": 6,
-      "active_devices": 1,
+      "active_violators": 1,
       "system_status": "online",
       "model_status": "loaded",
       "last_updated": "2024-01-01T12:00:00Z"

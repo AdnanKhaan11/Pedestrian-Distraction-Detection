@@ -63,6 +63,7 @@ async def list_alerts(
     """
     try:
         db = Database.get_database()
+        await AlertService.cleanup_expired_alerts()
 
         # Build filter query
         query_filter = {}

@@ -10,9 +10,12 @@ Handles:
 """
 
 import asyncio
+import ctypes
+import os
 import re
 import subprocess
 import sys
+import signal
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Optional
@@ -72,6 +75,24 @@ class TrainingJobManager:
             process.terminate()
             return True
 
+    async def pause_current_process(self) -> bool:
+        """Pause the active training subprocess if it is still running."""
+        async with self._lock:
+            process = self._current_process
+            if process is None or process.returncode is not None:
+                return False
+            TrainingService._suspend_process_native(process.pid)
+            return True
+
+    async def resume_current_process(self) -> bool:
+        """Resume the active training subprocess if it is paused."""
+        async with self._lock:
+            process = self._current_process
+            if process is None or process.returncode is not None:
+                return False
+            TrainingService._resume_process_native(process.pid)
+            return True
+
     async def get_current_job_id(self) -> Optional[str]:
         """Get ID of currently running job."""
         async with self._lock:
@@ -113,23 +134,72 @@ class TrainingService:
     }
 
     @staticmethod
+    def _suspend_process_native(pid: int) -> None:
+        """Suspend a process by PID on the current platform."""
+        if sys.platform.startswith("win"):
+            process_suspend_resume = 0x0800
+            kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            ntdll = ctypes.WinDLL("ntdll", use_last_error=True)
+            handle = kernel32.OpenProcess(process_suspend_resume, False, pid)
+            if not handle:
+                raise OSError(f"Failed to open process {pid} for suspension")
+            try:
+                status = ntdll.NtSuspendProcess(handle)
+                if status != 0:
+                    raise OSError(f"NtSuspendProcess failed with status {status}")
+            finally:
+                kernel32.CloseHandle(handle)
+            return
+
+        os.kill(pid, signal.SIGSTOP)
+
+    @staticmethod
+    def _resume_process_native(pid: int) -> None:
+        """Resume a suspended process by PID on the current platform."""
+        if sys.platform.startswith("win"):
+            process_suspend_resume = 0x0800
+            kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            ntdll = ctypes.WinDLL("ntdll", use_last_error=True)
+            handle = kernel32.OpenProcess(process_suspend_resume, False, pid)
+            if not handle:
+                raise OSError(f"Failed to open process {pid} for resume")
+            try:
+                status = ntdll.NtResumeProcess(handle)
+                if status != 0:
+                    raise OSError(f"NtResumeProcess failed with status {status}")
+            finally:
+                kernel32.CloseHandle(handle)
+            return
+
+        os.kill(pid, signal.SIGCONT)
+
+    @staticmethod
     async def get_current_job_status() -> Optional[dict[str, Any]]:
         """Get status of currently running training job."""
         db: AsyncIOMotorDatabase = Database.get_database()
         manager = TrainingJobManager.get_instance()
 
         job_id = await manager.get_current_job_id()
-        if not job_id:
-            return None
+        if job_id:
+            job = await db.training_logs.find_one({"_id": job_id})
+            if job:
+                return job
 
-        job = await db.training_logs.find_one({"_id": job_id})
-        return job
+        # Fallback to persisted running state in case in-memory manager state was lost.
+        job = await db.training_logs.find_one({"status": {"$in": ["running", "paused"]}})
+        if job:
+            await manager.set_current_job(str(job.get("_id") or job.get("job_id")))
+            return job
+
+        return None
 
     @staticmethod
     async def is_training_running() -> bool:
         """Check if any training job is currently running."""
         db: AsyncIOMotorDatabase = Database.get_database()
-        running_job = await db.training_logs.find_one({"status": "running"})
+        running_job = await db.training_logs.find_one(
+            {"status": {"$in": ["running", "paused"]}}
+        )
         return running_job is not None
 
     @staticmethod
@@ -201,6 +271,7 @@ class TrainingService:
         """
         db: AsyncIOMotorDatabase = Database.get_database()
         manager = TrainingJobManager.get_instance()
+        logs = []
 
         script_name = TrainingService.SCRIPT_MAPPING[model_type]
         script_path = TrainingService.SCRIPTS_DIR / script_name
@@ -241,7 +312,6 @@ class TrainingService:
             await manager.set_current_process(process)
 
             # Capture output line by line
-            logs = []
             current_epoch = 0
             total_epochs = epochs
             loss = None
@@ -438,6 +508,50 @@ class TrainingService:
         return True
 
     @staticmethod
+    async def pause_training() -> bool:
+        """Pause currently running training job."""
+        db: AsyncIOMotorDatabase = Database.get_database()
+        manager = TrainingJobManager.get_instance()
+
+        job_id = await manager.get_current_job_id()
+        if not job_id:
+            return False
+
+        paused = await manager.pause_current_process()
+        if not paused:
+            return False
+
+        await db.training_logs.update_one(
+            {"_id": job_id},
+            {"$set": {"status": "paused"}},
+        )
+        log = TrainingLog(type="log", message="Training paused by user")
+        await manager.broadcast_log(log)
+        return True
+
+    @staticmethod
+    async def resume_training() -> bool:
+        """Resume currently paused training job."""
+        db: AsyncIOMotorDatabase = Database.get_database()
+        manager = TrainingJobManager.get_instance()
+
+        job_id = await manager.get_current_job_id()
+        if not job_id:
+            return False
+
+        resumed = await manager.resume_current_process()
+        if not resumed:
+            return False
+
+        await db.training_logs.update_one(
+            {"_id": job_id},
+            {"$set": {"status": "running"}},
+        )
+        log = TrainingLog(type="log", message="Training resumed by user")
+        await manager.broadcast_log(log)
+        return True
+
+    @staticmethod
     async def get_training_history(limit: int = 20) -> list[dict[str, Any]]:
         """Get past training jobs."""
         db: AsyncIOMotorDatabase = Database.get_database()
@@ -452,3 +566,18 @@ class TrainingService:
         )
 
         return jobs or []
+
+    @staticmethod
+    async def delete_training_job(job_id: str) -> bool:
+        """Delete a non-active training job from history."""
+        db: AsyncIOMotorDatabase = Database.get_database()
+
+        job = await db.training_logs.find_one({"_id": job_id})
+        if not job:
+            return False
+
+        if job.get("status") in {"running", "paused"}:
+            return False
+
+        result = await db.training_logs.delete_one({"_id": job_id})
+        return result.deleted_count > 0

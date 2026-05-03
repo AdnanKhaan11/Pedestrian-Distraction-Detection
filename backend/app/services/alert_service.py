@@ -25,6 +25,7 @@ class AlertService:
     HIGH_PHONE_THRESHOLD = 0.90
     MEDIUM_POSTURE_THRESHOLD = 0.75
     DEDUP_WINDOW_SECONDS = 60
+    ALERT_RETENTION_HOURS = 24
 
     @staticmethod
     def _determine_severity(pedestrian: PedestrianResult) -> str:
@@ -116,6 +117,22 @@ class AlertService:
         except Exception as e:
             print(f"Warning: failed to save alert: {e}")
             return None
+
+    @staticmethod
+    async def cleanup_expired_alerts() -> int:
+        """Delete alerts older than the retention window."""
+        try:
+            db: AsyncIOMotorDatabase = Database.get_database()
+            cutoff_time = datetime.utcnow() - timedelta(
+                hours=AlertService.ALERT_RETENTION_HOURS
+            )
+            result = await db.alerts.delete_many({"timestamp": {"$lt": cutoff_time}})
+            if result.deleted_count > 0:
+                DashboardService.clear_cache()
+            return result.deleted_count
+        except Exception as e:
+            print(f"Warning: failed to cleanup expired alerts: {e}")
+            return 0
 
     @staticmethod
     async def resolve_alert(alert_id: str) -> bool:

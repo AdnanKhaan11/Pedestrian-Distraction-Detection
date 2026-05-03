@@ -39,6 +39,10 @@ class CollectionSchema:
             "name": "alerts",
             "indexes": [
                 {"keys": [("timestamp", -1)]},  # Recent alerts
+                {
+                    "keys": [("timestamp", 1)],
+                    "expireAfterSeconds": 86400,
+                },  # Auto-delete after 24 hours
                 {"keys": [("resolved", 1)]},  # Unresolved alerts
                 {"keys": [("severity", 1)]},  # Filter by severity
                 {"keys": [("face_id", 1)]},  # Alerts for a person

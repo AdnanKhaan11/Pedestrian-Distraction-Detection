@@ -122,6 +122,25 @@ async def get_training_status() -> dict[str, Any]:
     }
 
 
+@router.get("/api/train/current")
+async def get_current_training() -> dict[str, Any]:
+    """Get the current running or paused training job details."""
+    status = await TrainingService.get_current_job_status()
+
+    if not status:
+        return {
+            "success": False,
+            "message": "No training job running",
+            "job": None,
+        }
+
+    status["_id"] = str(status.get("_id"))
+    return {
+        "success": True,
+        "job": status,
+    }
+
+
 @router.get("/api/train/history")
 async def get_training_history(
     limit: int = Query(20, ge=1, le=100, description="Number of past jobs to return")
@@ -186,6 +205,57 @@ async def cancel_training() -> dict[str, Any]:
             "success": False,
             "message": "No training job running",
         }
+
+
+@router.post("/api/train/current/pause")
+async def pause_training() -> dict[str, Any]:
+    """Pause the current training job."""
+    result = await TrainingService.pause_training()
+
+    if result:
+        return {
+            "success": True,
+            "message": "Training paused",
+        }
+
+    return {
+        "success": False,
+        "message": "No running training job to pause",
+    }
+
+
+@router.post("/api/train/current/resume")
+async def resume_training() -> dict[str, Any]:
+    """Resume the current paused training job."""
+    result = await TrainingService.resume_training()
+
+    if result:
+        return {
+            "success": True,
+            "message": "Training resumed",
+        }
+
+    return {
+        "success": False,
+        "message": "No paused training job to resume",
+    }
+
+
+@router.delete("/api/train/history/{job_id}")
+async def delete_training_history_job(job_id: str) -> dict[str, Any]:
+    """Delete one non-active training history record."""
+    result = await TrainingService.delete_training_job(job_id)
+
+    if result:
+        return {
+            "success": True,
+            "message": "Training history deleted",
+        }
+
+    return {
+        "success": False,
+        "message": "Training history not found or still active",
+    }
 
 
 @router.websocket("/ws/train-logs")

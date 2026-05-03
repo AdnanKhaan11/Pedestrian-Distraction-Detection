@@ -61,10 +61,10 @@ class DatabaseInitializer:
             index_spec: Index specification with 'keys' and optional 'unique'
         """
         keys = index_spec.get("keys", [])
-        unique = index_spec.get("unique", False)
+        options = {k: v for k, v in index_spec.items() if k != "keys"}
 
         try:
-            index_name = await collection.create_index(keys, unique=unique)
+            index_name = await collection.create_index(keys, **options)
             logger.debug(f"    Index created: {index_name}")
         except Exception as e:
             # Index may already exist, which is fine
