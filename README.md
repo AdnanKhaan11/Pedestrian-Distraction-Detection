@@ -31,23 +31,21 @@ Pedestrian Distraction Detection System
 
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-Active%20Development-orange?style=flat-square)]()
-[![University](https://img.shields.io/badge/University-Final%20Year%20Project-blue?style=flat-square)]()
+[![University](https://img.shields.io/badge/University-University%20of%20Haripur-blue?style=flat-square)]()
 [![Group](https://img.shields.io/badge/Group-09%20(M)-purple?style=flat-square)]()
 
 <br/>
 
-> **Supervisor:** Dr. Adeel Ahmad   &nbsp;|&nbsp; **Students:** Adnan Khan F22-0431 &nbsp;·&nbsp; Bilal Asghar F22-1813
+> **Supervisor:** Dr. Adeel Ahmad &nbsp;|&nbsp; **Students:** Adnan Khan *(F22-0431)* &nbsp;·&nbsp; Bilal Asghar *(F22-1813)*
 >
-> *University of Haripur  — Faculty of Science and Technology*
-> *Department of  Information Technology*
+> *University of Haripur — Faculty of Science and Technology*
+> *Department of Information Technology*
 
 <br/>
 
 ---
 
 </div>
-
-<br/>
 
 ## 📌 Table of Contents
 
@@ -61,11 +59,11 @@ Pedestrian Distraction Detection System
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
   - [Running the System](#running-the-system)
+  - [GPU Setup](#gpu-setup)
   - [Docker Setup](#docker-setup)
 - [API Reference](#-api-reference)
 - [Frontend Overview](#-frontend-overview)
 - [Training Module](#-training-module)
-- [Database Schema](#-database-schema)
 - [Configuration](#-configuration)
 - [Results & Performance](#-results--performance)
 - [Roadmap](#-roadmap)
@@ -78,28 +76,25 @@ Pedestrian Distraction Detection System
 
 ## 🌐 Overview
 
-The **Pedestrian Distraction Detection System (PDS)** is a production-grade, real-time AI surveillance platform designed to detect pedestrians using mobile phones while crossing roads — a major cause of pedestrian fatalities worldwide.
-
-The system operates by combining **pose estimation**, **3D behavioral feature engineering**, and **object detection** into a multi-stage inference pipeline. Detected violations are logged, the pedestrian's face is captured and deduplicated, and alerts are generated for operator review — all in real time via a modern web dashboard.
-
-> 🏛️ This system was developed as part of a Final Year Project at the **University of Science and Technology**. The Macao government has been considering penalizing pedestrians for cell phone use while crossing roads — this system provides the technical foundation for automated enforcement and monitoring.
-
-<br/>
+The **Pedestrian Distraction Detection System (PDS)** is a production-grade, real-time AI surveillance platform designed to detect and monitor pedestrians who use mobile phones while crossing roads — one of the leading causes of pedestrian accidents and fatalities worldwide.
 
 ### The Problem
 
-<!-- PLACEHOLDER: Add local statistics or government policy context here -->
+Pedestrian distraction caused by smartphones has become a critical public safety crisis in urban environments. Studies show that distracted pedestrians are **4 times more likely** to engage in dangerous behavior such as ignoring traffic signals, failing to look both ways, and crossing at unsafe locations. Each year, thousands of preventable accidents and deaths occur simply because a pedestrian was looking at their phone instead of the road.
 
-Pedestrian distraction from cell phones is responsible for **[X]% of pedestrian fatalities** in urban environments. Manual monitoring is expensive and inconsistent. Existing camera systems lack the intelligence to automatically identify and log violations in real time.
+Manual monitoring of pedestrian behavior at road crossings is expensive, inconsistent, and impossible to scale. Existing camera systems at intersections are passive — they record footage but cannot automatically identify, log, or alert authorities about distracted pedestrian violations in real time.
 
 ### Our Solution
 
-A fully automated AI pipeline that:
-1. Detects pedestrians in real-time video streams
-2. Classifies their posture using a novel **2-Channel 3D behavioral feature**
+A fully automated AI pipeline that addresses this problem at scale:
+
+1. Detects pedestrians in real-time video streams using state-of-the-art object detection
+2. Classifies pedestrian posture using a novel **2-Channel 3D Behavioral Feature** approach
 3. Confirms phone usage with a fine-tuned **YOLOv11n detector**
-4. Captures and stores the violator's face for record-keeping
-5. Provides a live monitoring dashboard for operators
+4. Captures and stores the violator's face for record-keeping and deduplication
+5. Provides a live monitoring dashboard for operators with real-time alerts and analytics
+
+This system provides the technical foundation for automated pedestrian safety enforcement, enabling city authorities and traffic monitoring agencies to proactively identify and respond to dangerous distracted walking behavior before accidents occur.
 
 <br/>
 
@@ -126,7 +121,7 @@ A fully automated AI pipeline that:
 - Live bounding box overlay on video
 - Real-time alert generation and management
 - Detection statistics and timeline charts
-- Multi-camera device support
+- Violation analytics and reporting
 
 </td>
 </tr>
@@ -187,7 +182,7 @@ A fully automated AI pipeline that:
 │                      │           │                                    │
 │  1. YOLO BBox        │           │  ● detections   ● alerts           │
 │  2. RTMPose 17-kp    │           │  ● faces        ● settings         │
-│  3. 2-Ch 3D Feature  │           │  ● devices      ● training_logs    │
+│  3. 2-Ch 3D Feature  │           │  ● training_logs                   │
 │  4. 3D-CNN Classify  │           │                                    │
 │  5. YOLOv11n Phone   │           └───────────────────────────────────┘
 │  6. Fusion FSM       │
@@ -356,26 +351,25 @@ PedestrianProject/
 │   ├── components/                 ← 16 core ML modules
 │   │   ├── runtime_detector.py     ← Per-person inference
 │   │   ├── distraction_fusion.py   ← State machine logic
-│   │   ├── pose_feature_generator.py  ← 2-Ch 3D feature builder
+│   │   ├── pose_feature_generator.py
 │   │   └── ...
 │   ├── pipeline/                   ← Orchestration pipelines
 │   │   ├── inference_pipeline.py   ← Main inference entry point
 │   │   ├── posture_training_pipeline.py
 │   │   └── phone_training_pipeline.py
 │   ├── serving/                    ← API predictor + schemas
-│   │   ├── predictor.py            ← Main Predictor class
+│   │   ├── predictor.py
 │   │   └── schemas.py
 │   ├── config/                     ← Config loading + constants
 │   ├── entity/                     ← Pydantic config entities
 │   └── utils/                      ← Helpers, logging, OpenCV utils
 │
 ├── 📂 configs/                     ← YAML configuration files
-│   ├── config.yaml                 ← Main system config
-│   └── ...
+│   └── config.yaml                 ← Main system config
 │
 ├── 📂 scripts/                     ← Training entry points
-│   ├── train_posture.py
-│   └── train_phone.py
+│   ├── train_posture_model.py
+│   └── train_phone_model.py
 │
 ├── 📂 backend/                     ← FastAPI backend (API layer)
 │   └── app/
@@ -410,7 +404,7 @@ PedestrianProject/
 
 ### Prerequisites
 
-Before installing, make sure you have the following installed:
+Before installing, make sure you have the following:
 
 | Requirement | Version | Check Command |
 |---|---|---|
@@ -419,9 +413,9 @@ Before installing, make sure you have the following installed:
 | npm | 9+ | `npm --version` |
 | MongoDB | 6.0+ | `mongod --version` |
 | Git | Any | `git --version` |
-| CUDA (optional) | 11.8+ | `nvcc --version` |
+| CUDA *(GPU users)* | 11.8 or 12.1 | `nvcc --version` |
 
-> 💡 **GPU is optional.** The system runs on CPU but GPU (CUDA) is recommended for real-time performance at 30+ FPS.
+> 💡 **GPU is optional but strongly recommended.** The system runs fully on CPU but achieving real-time 30+ FPS performance requires a CUDA-capable GPU.
 
 ---
 
@@ -434,37 +428,38 @@ git clone https://github.com/AdnanKhaan11/Pedestrian-Distraction-Detection.git
 cd Pedestrian-Distraction-Detection
 ```
 
-#### 2. Set Up Python Environment
+#### 2. Set Up Python Virtual Environment
 
 ```bash
-# Create a virtual environment
-python -m venv venv
+# Create virtual environment
+python -m venv youfocus
 
 # Activate it
 # On Windows:
-venv\Scripts\activate
+youfocus\Scripts\activate
+
 # On macOS/Linux:
-source venv/bin/activate
+source youfocus/bin/activate
 ```
 
 #### 3. Install Python Dependencies
 
+**CPU Users:**
 ```bash
-# Install PyTorch first (CPU version)
+# Install PyTorch (CPU version)
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 
-# For GPU (CUDA 11.8):
-# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-
-# Install MMPose dependencies (required for pose estimation)
+# Install MMPose and its dependencies
 pip install -U openmim
 mim install mmengine
 mim install "mmcv==2.1.0"
 mim install "mmpose==1.3.2"
 
-# Install remaining dependencies
+# Install all remaining dependencies
 pip install -r requirements.txt
 ```
+
+**GPU Users — see [GPU Setup](#gpu-setup) section below before installing PyTorch.**
 
 #### 4. Install Frontend Dependencies
 
@@ -480,8 +475,11 @@ cd ..
 # Copy the example environment file
 cp .env.example .env
 
-# Open .env and fill in your values
-nano .env   # or use any text editor
+# Open and fill in your values
+# Windows:
+notepad .env
+# macOS/Linux:
+nano .env
 ```
 
 **Required `.env` values:**
@@ -498,7 +496,7 @@ SECRET_KEY=your-very-long-random-secret-key-here
 CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 
 # ML Settings
-DEVICE=cpu                          # or "cuda" for GPU
+DEVICE=cpu                          # Change to "cuda" for GPU
 CONFIDENCE_THRESHOLD=0.75
 ALERT_CONFIDENCE_THRESHOLD=0.80
 FACE_SIMILARITY_THRESHOLD=0.85
@@ -508,17 +506,78 @@ ALERT_DEDUP_WINDOW_SECONDS=60
 LOG_LEVEL=INFO
 ```
 
-#### 6. Download Model Weights
+---
 
-<!-- PLACEHOLDER: Add instructions for downloading pre-trained model weights -->
-<!-- Example: -->
+### GPU Setup
+
+> ⚡ **Skip this section if you are using CPU only.**
+
+GPU acceleration dramatically improves inference speed. Follow these steps carefully to install the correct CUDA-compatible version of PyTorch.
+
+#### Step 1 — Check Your CUDA Version
+
 ```bash
-# Download pre-trained weights
-# [PLACEHOLDER — Add model download instructions here]
-# Example:
-# wget https://your-storage-url/posture_classifier_v1.pth -P artifacts/models/
-# wget https://your-storage-url/phone_detector_v1.pt -P artifacts/models/
+nvcc --version
+# or
+nvidia-smi
 ```
+
+Look for the CUDA version in the output (e.g., `CUDA Version: 11.8` or `CUDA Version: 12.1`).
+
+#### Step 2 — Install the Correct PyTorch Version
+
+**For CUDA 11.8:**
+```bash
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+```
+
+**For CUDA 12.1:**
+```bash
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+```
+
+**For CUDA 12.4+:**
+```bash
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+```
+
+> ⚠️ **Do not mix CUDA versions.** Install the PyTorch build that exactly matches your installed CUDA version.
+
+#### Step 3 — Verify GPU Is Detected
+
+```python
+import torch
+print(torch.cuda.is_available())       # Should print: True
+print(torch.cuda.get_device_name(0))   # Should print your GPU name
+```
+
+#### Step 4 — Enable GPU in `.env`
+
+```env
+DEVICE=cuda
+```
+
+#### Step 5 — Install MMPose with GPU Support
+
+```bash
+pip install -U openmim
+mim install mmengine
+mim install "mmcv==2.1.0"
+mim install "mmpose==1.3.2"
+pip install -r requirements.txt
+```
+
+#### GPU Requirements Summary
+
+| Component | Minimum | Recommended |
+|---|---|---|
+| GPU VRAM | 4 GB | 8 GB+ |
+| CUDA Version | 11.8 | 12.1+ |
+| cuDNN | 8.x | 9.x |
+| Driver (Windows) | 452.39+ | Latest |
+| Driver (Linux) | 450.80+ | Latest |
+
+> 💡 **Tested GPUs:** NVIDIA RTX 3060, RTX 3080, RTX 4070, Tesla T4. AMD GPUs are not supported — CUDA is NVIDIA only.
 
 ---
 
@@ -529,31 +588,30 @@ You need **3 terminal windows** to run the full system locally.
 #### Terminal 1 — Start MongoDB
 
 ```bash
-# If MongoDB is installed locally
-mongod --dbpath ./data/db
-
-# Or if using MongoDB as a service (Windows)
+# Windows (if installed as a service)
 net start MongoDB
 
-# Or if using MongoDB as a service (Linux/Mac)
+# Windows (manual)
+mongod --dbpath ./data/db
+
+# Linux/macOS
 sudo systemctl start mongod
 ```
 
 #### Terminal 2 — Start the Backend
 
 ```bash
-# Make sure virtual environment is activated
-source venv/bin/activate  # Linux/Mac
-# or: venv\Scripts\activate  # Windows
+# Make sure virtual environment is activated first
+youfocus\Scripts\activate        # Windows
+source youfocus/bin/activate     # Linux/macOS
 
 # Start FastAPI backend from project root
 uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The backend will be available at:
+Available at:
 - **API:** `http://localhost:8000`
 - **Swagger Docs:** `http://localhost:8000/docs`
-- **ReDoc:** `http://localhost:8000/redoc`
 - **Health Check:** `http://localhost:8000/health`
 
 #### Terminal 3 — Start the Frontend
@@ -563,18 +621,29 @@ cd frontend
 npm run dev
 ```
 
-The frontend will be available at: **`http://localhost:5173`**
+Available at: **`http://localhost:5173`**
 
-> ✅ Once all three are running, open `http://localhost:5173` in your browser, navigate to Dashboard, and click **"Start Camera"** to begin real-time detection.
+> ✅ Once all three are running, open `http://localhost:5173` in your browser and navigate to **Dashboard → Start Camera** to begin real-time detection.
+
+#### 🖥️ Quick Launch (Windows)
+
+Alternatively, use the provided batch file to launch both backend and frontend at once:
+
+```bash
+# From the project root directory, with virtual environment already activated:
+start.bat
+```
+
+The launcher will verify your environment and open both servers in separate terminal windows automatically.
 
 ---
 
 ### Docker Setup
 
-The easiest way to run the entire system with a single command:
+Run the entire backend stack with a single command:
 
 ```bash
-# Build and start all services (backend + MongoDB)
+# Build and start all services
 docker-compose up --build
 
 # Run in background
@@ -587,14 +656,12 @@ docker-compose down
 docker-compose down -v
 ```
 
-**Services started by Docker Compose:**
-
 | Service | Port | Description |
 |---|---|---|
 | `backend` | `8000` | FastAPI application |
 | `mongodb` | `27017` | MongoDB database |
 
-> 📝 **Note:** The frontend is NOT included in Docker Compose — run it separately with `npm run dev` in the `frontend/` folder, or serve it statically after building with `npm run build`.
+> 📝 **Note:** The frontend is not included in Docker Compose. Run it separately with `npm run dev` in the `frontend/` folder.
 
 <br/>
 
@@ -602,85 +669,49 @@ docker-compose down -v
 
 ## 📡 API Reference
 
-The full interactive API documentation is available at `http://localhost:8000/docs` when the backend is running.
+Full interactive API documentation is available at `http://localhost:8000/docs` when the backend is running.
 
-### Core Endpoints
-
-#### Detection
+### Detection
 
 | Method | Endpoint | Description |
 |---|---|---|
 | `POST` | `/api/detect` | Submit a single image for detection |
 | `WS` | `/ws/stream` | WebSocket for real-time frame streaming |
 
-**WebSocket Frame Format (send):**
-```json
-{
-  "frame": "<base64_jpeg_string>",
-  "timestamp": "2026-04-29T12:00:00Z",
-  "session_id": "camera_01"
-}
-```
-
-**DetectionResult Format (receive):**
-```json
-{
-  "detection_id": "uuid",
-  "timestamp": "2026-04-29T12:00:00Z",
-  "session_id": "camera_01",
-  "is_violation": true,
-  "overall_confidence": 0.92,
-  "processing_time_ms": 85,
-  "pedestrians": [
-    {
-      "pedestrian_id": "uuid",
-      "bbox": { "x1": 100, "y1": 80, "x2": 280, "y2": 420,
-                "x1_norm": 0.15, "y1_norm": 0.16, "x2_norm": 0.43, "y2_norm": 0.87 },
-      "posture_state": "USING",
-      "posture_confidence": 0.88,
-      "phone_detected": true,
-      "phone_confidence": 0.94,
-      "fusion_state": "USING",
-      "face_region": { "x1": 110, "y1": 80, "x2": 200, "y2": 170 },
-      "is_violation": true
-    }
-  ]
-}
-```
-
-#### Alerts
+### Alerts
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/alerts` | Get paginated alerts (filter by severity, resolved, date) |
+| `GET` | `/api/alerts` | Get paginated alerts |
 | `PATCH` | `/api/alerts/{id}/resolve` | Mark an alert as resolved |
 | `DELETE` | `/api/alerts/{id}` | Delete an alert |
 
-#### Dashboard
+### Dashboard
 
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET` | `/api/dashboard/stats` | Summary statistics |
-| `GET` | `/api/dashboard/timeline` | Hourly detection counts (last 24h) |
+| `GET` | `/api/dashboard/timeline` | Hourly violation counts (last 24h) |
 
-#### Faces
+### Faces
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/faces` | Paginated list of all detected faces |
+| `GET` | `/api/faces` | List all detected faces |
 | `DELETE` | `/api/faces/{id}` | Remove a face record |
 
-#### Training
+### Training
 
 | Method | Endpoint | Description |
 |---|---|---|
 | `POST` | `/api/train` | Start a training job |
 | `GET` | `/api/train/status` | Current training status |
+| `GET` | `/api/train/current` | Currently running training details |
 | `DELETE` | `/api/train/current` | Stop running training job |
-| `GET` | `/api/train/history` | Past training jobs list |
+| `GET` | `/api/train/history?limit=20` | Past training jobs list |
 | `WS` | `/ws/train-logs` | Real-time training log stream |
 
-#### Settings
+### Settings
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -693,33 +724,15 @@ The full interactive API documentation is available at `http://localhost:8000/do
 
 ## 🖥️ Frontend Overview
 
-The frontend is a modern React 19 SPA with 5 main pages:
-
-### Pages
+The frontend is a modern React 19 SPA with the following main pages:
 
 | Page | Route | Description |
 |---|---|---|
-| **Dashboard** | `/` | Live camera feed, stats cards, alerts panel, detection chart |
-| **Detection** | `/detection` | Full-screen camera with real-time bounding boxes and stats |
-| **Devices** | `/devices` | Connected camera/device management |
+| **Dashboard** | `/` | Live stats, active violators count, timeline chart, alerts panel |
+| **Detection** | `/detection` | Full-screen camera with real-time bounding boxes |
 | **Reports** | `/reports` | Detection history, face gallery, export tools |
-| **Settings** | `/settings` | System config, detection thresholds, model training |
-
-### Dashboard Screenshot
-
-<!-- PLACEHOLDER: Add a screenshot of the running dashboard here -->
-```
-[PLACEHOLDER — Add dashboard screenshot here]
-Example: ![Dashboard Screenshot](docs/screenshots/dashboard.png)
-```
-
-### Detection in Action
-
-<!-- PLACEHOLDER: Add a GIF or screenshot of real-time detection -->
-```
-[PLACEHOLDER — Add detection GIF or screenshot here]
-Example: ![Detection Demo](docs/screenshots/detection.gif)
-```
+| **Training** | `/training` | Model training with live progress, pause/resume/stop controls |
+| **Settings** | `/settings` | System config, detection thresholds |
 
 <br/>
 
@@ -727,26 +740,23 @@ Example: ![Detection Demo](docs/screenshots/detection.gif)
 
 ## 🧪 Training Module
 
-The system includes a full UI-based model training workflow accessible from **Settings → Model Training**.
+The system includes a full UI-based model training workflow.
 
 ### How to Train a Model
 
-1. Navigate to **Settings** → click **"Model Training"** tab
+1. Navigate to the **Training** page from the sidebar
 2. Select the model to train: **Posture Classifier** or **Phone Detector**
-3. Configure hyperparameters:
-   - **Epochs** (default: 50)
-   - **Learning Rate** (default: 0.001)
-   - **Batch Size** (default: 32)
+3. Configure hyperparameters (Epochs, Learning Rate, Batch Size)
 4. Click **"Start Training"**
 5. Monitor live progress:
    - Real-time progress bar with epoch counter
    - Live loss and accuracy metrics
    - Scrollable training log output
-6. Use control buttons:
-   - **Pause** — suspends training (can resume)
+6. Use control buttons during training:
+   - **Pause** — suspends training (resumable)
    - **Resume** — continues from last checkpoint
    - **Stop** — cancels training entirely
-7. When complete, click **"Save & Activate Model"** to deploy the new weights
+7. View completed runs in **Training History** and delete old records as needed
 
 ### Training Datasets
 
@@ -755,109 +765,33 @@ The system includes a full UI-based model training workflow accessible from **Se
 | Posture Dataset | 26,748 total | Train the 3D-CNN posture classifier |
 | Phone Dataset | 11,508 total | Train the YOLOv11n phone detector |
 
-<!-- PLACEHOLDER: Add dataset download or preparation instructions -->
-```
-[PLACEHOLDER — Add dataset download/preparation instructions here]
-```
-
-<br/>
-
----
-
-## 🍃 Database Schema
-
-The system uses MongoDB with 6 collections:
-
-### `detections`
-Stores every inference result from the pipeline.
-
-```json
-{
-  "detection_id": "uuid",
-  "timestamp": "ISO8601",
-  "session_id": "camera_01",
-  "is_violation": true,
-  "overall_confidence": 0.92,
-  "processing_time_ms": 85,
-  "pedestrians": [{ "...full PedestrianResult..." }]
-}
-```
-
-### `alerts`
-Operator-facing violation alerts.
-
-```json
-{
-  "alert_id": "uuid",
-  "detection_id": "uuid",
-  "face_id": "uuid",
-  "severity": "HIGH",
-  "title": "Cell Phone Usage Detected",
-  "confidence": 0.92,
-  "timestamp": "ISO8601",
-  "resolved": false,
-  "snapshot_base64": "..."
-}
-```
-
-### `faces`
-Deduplicated pedestrian face records.
-
-```json
-{
-  "face_id": "uuid",
-  "embedding": [0.12, -0.44, "...128 floats..."],
-  "image_base64": "...",
-  "first_seen": "ISO8601",
-  "last_seen": "ISO8601",
-  "detection_count": 4,
-  "violation_count": 3
-}
-```
-
-### `settings`
-Singleton runtime configuration document.
-
-```json
-{
-  "detection_confidence_threshold": 0.75,
-  "alert_confidence_threshold": 0.80,
-  "face_similarity_threshold": 0.85,
-  "alert_dedup_window_seconds": 60,
-  "frame_sample_rate": 2,
-  "active_model": "posture_classifier_v1"
-}
-```
-
 <br/>
 
 ---
 
 ## ⚙️ Configuration
 
-All runtime behavior is controlled through two layers:
-
-### 1. Infrastructure Config (`.env` file)
-Used for server settings — database connections, ports, secrets. **Never changes at runtime.**
+### Infrastructure Config (`.env` file)
+Used for server-level settings. Never changes at runtime.
 
 | Variable | Default | Description |
 |---|---|---|
 | `MONGODB_URI` | `mongodb://localhost:27017` | MongoDB connection string |
 | `DB_NAME` | `pedestrian_detection` | Database name |
-| `SECRET_KEY` | *(required)* | JWT signing secret |
+| `SECRET_KEY` | *(required)* | Signing secret |
 | `CORS_ORIGINS` | `http://localhost:5173` | Allowed frontend origins |
 | `DEVICE` | `cpu` | Inference device: `cpu` or `cuda` |
 | `LOG_LEVEL` | `INFO` | Logging level |
 
-### 2. Runtime Config (MongoDB `settings` collection)
-Used for operational tuning — thresholds, intervals. **Changeable via the Settings page UI without restart.**
+### Runtime Config (Settings Page)
+Adjustable from the Settings UI without restarting the server.
 
 | Setting | Default | Description |
 |---|---|---|
 | `detection_confidence_threshold` | `0.75` | Minimum confidence to register a detection |
 | `alert_confidence_threshold` | `0.80` | Minimum confidence to create an alert |
-| `face_similarity_threshold` | `0.85` | Cosine similarity threshold for face dedup |
-| `alert_dedup_window_seconds` | `60` | Seconds before same face can trigger new alert |
+| `face_similarity_threshold` | `0.85` | Cosine similarity threshold for face deduplication |
+| `alert_dedup_window_seconds` | `60` | Seconds before same face can trigger a new alert |
 | `frame_sample_rate` | `2` | Frames per second sent to backend |
 
 <br/>
@@ -870,7 +804,7 @@ Used for operational tuning — thresholds, intervals. **Changeable via the Sett
 
 | Model | Architecture | Accuracy / mAP@50 | vs. Baseline |
 |---|---|---|---|
-| **Posture Classifier** | 2-Ch 3D CNN | **91.78%** | +17.5% over [2] |
+| **Posture Classifier** | 2-Ch 3D CNN | **91.78%** | +17.5% over prior work |
 | **Phone Detector** | YOLOv11n | **98.1% mAP@50** | +4.5% over YOLOv8n |
 
 ### System Performance
@@ -878,7 +812,7 @@ Used for operational tuning — thresholds, intervals. **Changeable via the Sett
 | Metric | Value |
 |---|---|
 | Mean inference time | **85ms** per frame |
-| System throughput | **~41.2 FPS** under high load |
+| System throughput | **~41.2 FPS** |
 | False positive rate | **3.4%** |
 | Face match precision | **94.7%** |
 
@@ -886,16 +820,10 @@ Used for operational tuning — thresholds, intervals. **Changeable via the Sett
 
 | Approach | Accuracy |
 |---|---|
-| Previous approach [2] | 74.3% |
+| Prior two-branch CNN approach | 74.3% |
 | Single-channel CNN | 77.1% |
 | LSTM baseline | 82.4% |
-| **Our 2-Ch 3D CNN** | **91.78%** |
-
-<!-- PLACEHOLDER: Add confusion matrix, ROC curve, or other evaluation figures here -->
-```
-[PLACEHOLDER — Add evaluation figures, charts, or images here]
-Example: ![Confusion Matrix](docs/results/confusion_matrix.png)
-```
+| **Our 2-Ch 3D CNN (this work)** | **91.78%** |
 
 <br/>
 
@@ -909,15 +837,14 @@ Example: ![Confusion Matrix](docs/results/confusion_matrix.png)
 - [x] YOLOv11n phone detector (98.1% mAP@50)
 - [x] DistractionFusion state machine
 - [x] React frontend with live camera feed
-- [ ] FastAPI backend with WebSocket streaming
-- [ ] MongoDB integration with Motor async driver
-- [ ] Face embedding and deduplication system
-- [ ] UI-based training module with pause/resume
+- [x] FastAPI backend with WebSocket streaming
+- [x] MongoDB integration with Motor async driver
+- [x] Face embedding and deduplication system
+- [x] UI-based training module with pause/resume/stop
 - [ ] Docker full-stack deployment
 - [ ] Multi-camera concurrent session support
 - [ ] Edge TPU deployment for sub-20ms latency
 - [ ] Transformer-based temporal modeling
-- [ ] Multi-intersection sensor fusion
 - [ ] Mobile app for operator alerts
 
 <br/>
@@ -948,10 +875,9 @@ Contributions, issue reports, and feature requests are welcome!
 
 ## 📚 References
 
-1. Wong, "Pedestrians on phone while crossing road to face 300-pataca fine," *Macao Daily*, 2024.
-2. H. Sunxi et al., "Detecting phone-related pedestrian distracted behaviours via a two-branch convolutional neural network," *IET Intelligent Transport Systems*, pp. 147–158, 2021.
-3. E. Hatay, J. Ma, H. Sun, J. Fang, Z. Gao, Y. Yu, "Learning to detect phone-related pedestrian distracted behaviors with synthetic data," in *Proc. IEEE Intelligent Vehicles Symposium*, pp. 2479–2486, 2022.
-4. J. Jiang et al., "RTMPose: Real-time multi-person pose estimation based on mmpose," 2023.
+1. H. Sunxi et al., "Detecting phone-related pedestrian distracted behaviours via a two-branch convolutional neural network," *IET Intelligent Transport Systems*, pp. 147–158, 2021.
+2. E. Hatay, J. Ma, H. Sun, J. Fang, Z. Gao, Y. Yu, "Learning to detect phone-related pedestrian distracted behaviors with synthetic data," in *Proc. IEEE Intelligent Vehicles Symposium*, pp. 2479–2486, 2022.
+3. J. Jiang et al., "RTMPose: Real-time multi-person pose estimation based on mmpose," 2023.
 
 <br/>
 
@@ -962,7 +888,7 @@ Contributions, issue reports, and feature requests are welcome!
 ```
 MIT License
 
-Copyright (c) 2026 Huang Yanzhen, Mai Jiajun — University of Science & Technology
+Copyright (c) 2026 Adnan Khan, Bilal Asghar — University of Haripur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -987,7 +913,7 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 
 Special thanks to:
 
-- **Prof. Dr Adeel Ahmad ** — Project supervisor and academic guidance
+- **Dr. Adeel Ahmad** — Project supervisor and academic guidance
 - **MMPose Team** (OpenMMLab) — RTMPose implementation
 - **Ultralytics** — YOLOv11n framework
 - **InsightFace Team** — Face embedding library
@@ -999,9 +925,9 @@ Special thanks to:
 
 <br/>
 
-**Built with ❤️ at the University of Science & Technology**
+**Built with ❤️ at the University of Haripur**
 
-*Department of  Information Technology · Final Year Project 2025–2026*
+*Department of Information Technology · Final Year Project 2025–2026*
 
 <br/>
 
