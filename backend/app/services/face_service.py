@@ -25,7 +25,6 @@ from app.utils.embedding_utils import cosine_similarity, generate_face_embedding
 class FaceService:
     """Service for face processing and deduplication."""
 
-    # Similarity threshold (read from settings at runtime)
     DEFAULT_SIMILARITY_THRESHOLD = 0.85
 
     @staticmethod
@@ -49,18 +48,25 @@ class FaceService:
             y2 = min(frame.shape[0], int(face_region.get("y2", frame.shape[0])))
 
             if x2 <= x1 or y2 <= y1:
+                print(
+                    f"Warning: invalid crop coordinates x1={x1} y1={y1} x2={x2} y2={y2} — skipping"
+                )
                 return None
 
             face_crop = frame[y1:y2, x1:x2]
 
-            # Resize to 160x160 for embedding model
+            if face_crop is None or face_crop.size == 0:
+                print("Warning: face crop is empty after slicing frame")
+                return None
+
             face_crop_resized = cv2.resize(
                 face_crop, (160, 160), interpolation=cv2.INTER_LINEAR
             )
 
             return face_crop_resized
 
-        except Exception:
+        except Exception as e:
+            print(f"Warning: _crop_face_from_frame failed: {e}")
             return None
 
     @staticmethod
@@ -79,9 +85,11 @@ class FaceService:
                 ".jpg", face_crop, [cv2.IMWRITE_JPEG_QUALITY, 90]
             )
             if not success:
+                print("Warning: cv2.imencode failed to encode face crop")
                 return ""
             return base64.b64encode(buffer).decode("utf-8")
-        except Exception:
+        except Exception as e:
+            print(f"Warning: _face_crop_to_base64 failed: {e}")
             return ""
 
     @staticmethod
@@ -95,8 +103,8 @@ class FaceService:
             settings = await db.settings.find_one({"_id": "default"})
             if settings and "face_similarity_threshold" in settings:
                 return float(settings["face_similarity_threshold"])
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Warning: could not read similarity threshold from DB: {e}")
         return FaceService.DEFAULT_SIMILARITY_THRESHOLD
 
     @staticmethod
@@ -121,7 +129,6 @@ class FaceService:
         try:
             from datetime import timedelta
 
-            # Query faces from last 30 days
             cutoff_time = datetime.utcnow() - timedelta(days=max_age_days)
 
             faces = await db.faces.find({"last_seen": {"$gte": cutoff_time}}).to_list(
@@ -143,7 +150,7 @@ class FaceService:
             return best_match if best_similarity >= threshold else None
 
         except Exception as e:
-            print(f"⚠️  Failed to query faces: {e}")
+            print(f"Warning: _find_matching_face failed: {e}")
             return None
 
     @staticmethod
@@ -153,7 +160,7 @@ class FaceService:
         detection_result: DetectionResult,
     ) -> Optional[str]:
         """
-        Process face from detection: crop, embed, deduplicate.
+        Process face from detection: crop, embed, deduplicate, save to DB.
 
         Args:
             original_frame: Original frame as numpy BGR array
@@ -165,8 +172,9 @@ class FaceService:
         """
         db: AsyncIOMotorDatabase = Database.get_database()
 
-        # Skip if no face region
+        # FIX 1: Log clearly when face_region is missing instead of silent return
         if not pedestrian.face_region:
+            print("Warning: pedestrian has no face_region — cannot crop or save face")
             return None
 
         # Crop face from frame
@@ -181,14 +189,20 @@ class FaceService:
         )
 
         if face_crop is None:
+            print("Warning: face crop returned None — skipping save")
             return None
 
         # Generate embedding
         try:
             embedding = generate_face_embedding(face_crop)
         except Exception as e:
-            print(f"⚠️  Embedding generation failed: {e}")
+            print(f"Warning: embedding generation failed: {e}")
             return None
+
+        # FIX 2: Convert numpy array to plain Python list before MongoDB insert
+        # MongoDB BSON cannot serialize numpy arrays — this was silently failing
+        if isinstance(embedding, np.ndarray):
+            embedding = embedding.tolist()
 
         # Find similar face
         threshold = await FaceService._get_similarity_threshold(db)
@@ -197,10 +211,19 @@ class FaceService:
         # Encode face to Base64
         face_base64 = FaceService._face_crop_to_base64(face_crop)
 
+        if not face_base64:
+            print(
+                "Warning: face base64 encoding produced empty string — image may not display in UI"
+            )
+
         now = datetime.utcnow()
 
+        # FIX 3: Extract session_id and violation_type for frontend display
+        session_id = detection_result.session_id or "unknown"
+        violation_type = pedestrian.posture_state or "distracted"
+
         if matching_face:
-            # Update existing face
+            # Update existing face record
             face_id = matching_face["_id"]
 
             try:
@@ -209,6 +232,10 @@ class FaceService:
                     {
                         "$set": {
                             "last_seen": now,
+                            "image_base64": face_base64,
+                            # FIX 4: Keep status as active on re-detection
+                            # Only mark resolved manually from frontend
+                            "status": matching_face.get("status", "active"),
                         },
                         "$inc": {
                             "detection_count": 1,
@@ -221,19 +248,21 @@ class FaceService:
                         },
                     },
                 )
+                print(f"Info: updated existing face record — face_id={face_id}")
             except Exception as e:
-                print(f"⚠️  Failed to update face: {e}")
+                print(f"Warning: failed to update face in MongoDB: {e}")
 
             return face_id
 
         else:
-            # Create new face
+            # Create new face record
             face_id = str(uuid4())
 
             try:
                 await db.faces.insert_one(
                     {
                         "_id": face_id,
+                        # FIX 5: Added all fields the frontend Violators UI expects
                         "embedding": embedding,
                         "image_base64": face_base64,
                         "first_seen": now,
@@ -241,9 +270,18 @@ class FaceService:
                         "detection_count": 1,
                         "violation_count": 1 if detection_result.is_violation else 0,
                         "detection_ids": [detection_result.detection_id],
+                        "session_id": session_id,
+                        "status": "active",
+                        "resolved": False,
+                        "violation_type": violation_type,
+                        "confidence": pedestrian.posture_confidence,
+                        "zone": session_id,
+                        "camera_id": session_id,
                     }
                 )
+                print(f"Info: new face saved to MongoDB — face_id={face_id}")
             except Exception as e:
-                print(f"⚠️  Failed to insert face: {e}")
+                print(f"Warning: failed to insert face into MongoDB: {e}")
+                return None
 
             return face_id

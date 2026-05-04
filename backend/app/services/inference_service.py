@@ -92,6 +92,8 @@ class InferenceService:
         if frame is not None:
             try:
                 face_id = await FaceService.process_face(frame, pedestrian, detection)
+                if face_id is None:
+                    print("Warning: process_face returned None — face was not saved")
             except Exception as e:
                 print(f"Warning: face processing error: {e}")
 
@@ -185,20 +187,45 @@ class InferenceService:
             except (ValueError, TypeError):
                 pass
 
-        # FIX 1: Map pipeline posture labels correctly
+        # FIX 1: Fallback — if pipeline did not return face_xyxy,
+        # estimate face region from top 35% of person bounding box.
+        # This ensures face crop always has coordinates to work with.
+        if face_region is None:
+            try:
+                x1_p, y1_p, x2_p, y2_p = [int(v) for v in xyxy]
+                body_height = y2_p - y1_p
+                estimated_face_y2 = y1_p + max(30, int(body_height * 0.35))
+                face_region = FaceRegion(
+                    x1=x1_p,
+                    y1=y1_p,
+                    x2=x2_p,
+                    y2=min(estimated_face_y2, y2_p),
+                )
+                print(
+                    f"Info: face_xyxy not in pipeline output — using estimated face region from person bbox"
+                )
+            except Exception as e:
+                print(f"Warning: failed to estimate face region from person bbox: {e}")
+
+        # FIX 2: Map pipeline posture labels correctly
         # Pipeline returns: 'safe', 'distracted', 'out_of_frame', 'using_or_suspicious'
         posture_label = person_result.get("posture", "safe")
         posture_state = posture_label
 
         phone_detected = person_result.get("phone", False)
 
-        # FIX 2: state is an integer from pipeline (128=safe, 32=distracted, 1=out_of_frame)
+        # FIX 3: state is an integer from pipeline (128=safe, 32=distracted, 1=out_of_frame)
         fusion_state = str(person_result.get("state", 0))
 
-        # FIX 3: is_violation based on posture label not string "USING"
-        is_violation = posture_label in ("distracted", "using_or_suspicious")
+        # FIX 4: is_violation based on posture label not string "USING"
+        # is_violation = posture_label in ("distracted", "using_or_suspicious")
+        is_violation = posture_label in (
+            "distracted",
+            "using_or_suspicious",
+            "suspicious",
+        )
 
-        # FIX 4: Extract real confidence from score_text instead of hardcoded values
+        # FIX 5: Extract real confidence from score_text instead of hardcoded values
         score_text = person_result.get("score_text", "0.0")
         try:
             posture_confidence = float(score_text) if score_text else 0.0
@@ -266,7 +293,6 @@ class InferenceService:
         runtime_params = self._get_session_runtime_params(session_id)
 
         try:
-            # FIX 5: run_on_frame may not accept runtime_parameters — use safe call
             try:
                 ml_result = pipeline.pipeline.run_on_frame(
                     frame=frame,
@@ -274,13 +300,11 @@ class InferenceService:
                     runtime_parameters=runtime_params,
                 )
             except TypeError:
-                # Fallback if run_on_frame does not accept runtime_parameters
                 ml_result = pipeline.pipeline.run_on_frame(
                     frame=frame,
                     draw_visualizer=False,
                 )
 
-            # Validate pipeline output format
             if not isinstance(ml_result, dict):
                 raise ValueError(f"Pipeline returned non-dict: {type(ml_result)}")
             if "person_results" not in ml_result:
@@ -327,7 +351,6 @@ class InferenceService:
             annotated_frame_base64=annotated_frame_base64,
         )
 
-        # Enrich violation pedestrians with face_id before storing to DB
         if is_violation:
             violation_tasks = [
                 self._enrich_violation_pedestrian(frame, detection, ped)

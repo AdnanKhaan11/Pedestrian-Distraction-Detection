@@ -1,7 +1,7 @@
 """
 Embedding and similarity utilities for face recognition.
 
-Uses InsightFace for face embeddings (128-dimensional vectors).
+Uses facenet-pytorch for face embeddings (512-dimensional vectors).
 """
 
 import numpy as np
@@ -9,7 +9,7 @@ import numpy as np
 
 def cosine_similarity(embedding1: list[float], embedding2: list[float]) -> float:
     """
-    Compute cosine similarity between two 128-D embeddings.
+    Compute cosine similarity between two embeddings.
 
     Args:
         embedding1: First embedding vector
@@ -18,18 +18,14 @@ def cosine_similarity(embedding1: list[float], embedding2: list[float]) -> float
     Returns:
         Similarity score (0.0 to 1.0, higher = more similar)
     """
-    # Convert to numpy arrays
     e1 = np.array(embedding1, dtype=np.float32)
     e2 = np.array(embedding2, dtype=np.float32)
 
-    # Normalize vectors
     e1_norm = e1 / (np.linalg.norm(e1) + 1e-8)
     e2_norm = e2 / (np.linalg.norm(e2) + 1e-8)
 
-    # Compute cosine similarity
     similarity = float(np.dot(e1_norm, e2_norm))
 
-    # Clamp to [0, 1] range
     return max(0.0, min(1.0, similarity))
 
 
@@ -47,55 +43,90 @@ def euclidean_distance(embedding1: list[float], embedding2: list[float]) -> floa
     e1 = np.array(embedding1, dtype=np.float32)
     e2 = np.array(embedding2, dtype=np.float32)
 
-    distance = float(np.linalg.norm(e1 - e2))
-    return distance
+    return float(np.linalg.norm(e1 - e2))
 
 
 def generate_face_embedding(face_crop: np.ndarray) -> list[float]:
     """
-    Generate 128-D embedding from face crop using InsightFace.
+    Generate 512-D embedding from face crop using facenet-pytorch.
 
     Args:
-        face_crop: Face image as numpy array (BGR, 160x160 recommended)
+        face_crop: Face image as numpy array (BGR, any size — resized internally)
 
     Returns:
-        List of 128 floats representing the face embedding
+        List of 512 floats representing the face embedding
 
     Raises:
-        ImportError: If InsightFace not installed
-        RuntimeError: If face not detected in crop
+        ImportError: If facenet-pytorch not installed
+        RuntimeError: If embedding generation fails
     """
     try:
-        from insightface.app import FaceAnalysis
+        import torch
+        from facenet_pytorch import InceptionResnetV1, MTCNN
     except ImportError:
         raise ImportError(
-            "InsightFace not installed. Install via: pip install insightface"
+            "facenet-pytorch not installed. Install via: pip install facenet-pytorch"
         )
 
-    # Initialize InsightFace model (lazy load, cached on first call)
-    if not hasattr(generate_face_embedding, "_face_analyzer"):
-        # Use CPU-only context
-        import os
+    # ── Lazy load models — only initialized once on first call ──
+    if not hasattr(generate_face_embedding, "_resnet"):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        os.environ["ONNX_COMPAT_MODE"] = "1"
-        app = FaceAnalysis(
-            providers=["CPUExecutionProvider"],
-            allowed_modules=["detection", "recognition"],
+        # MTCNN — face detector + aligner
+        generate_face_embedding._mtcnn = MTCNN(
+            image_size=160,
+            margin=10,
+            min_face_size=20,
+            thresholds=[0.6, 0.7, 0.7],
+            factor=0.709,
+            post_process=True,
+            device=device,
+            keep_all=False,  # only keep the most confident face
         )
-        app.prepare(ctx_id=-1)  # -1 = CPU
-        generate_face_embedding._face_analyzer = app
 
-    analyzer = generate_face_embedding._face_analyzer
+        # InceptionResnetV1 — embedding model pretrained on VGGFace2
+        generate_face_embedding._resnet = (
+            InceptionResnetV1(pretrained="vggface2").eval().to(device)
+        )
 
-    # Ensure input is BGR
-    if len(face_crop.shape) != 3 or face_crop.shape[2] != 3:
-        raise ValueError("Face crop must be BGR image with shape (H, W, 3)")
+        generate_face_embedding._device = device
+        print("Info: facenet-pytorch models loaded successfully")
 
-    # Detect and extract embedding
-    faces = analyzer.get(face_crop)
-    if not faces:
-        raise RuntimeError("No face detected in crop")
+    mtcnn = generate_face_embedding._mtcnn
+    resnet = generate_face_embedding._resnet
+    device = generate_face_embedding._device
 
-    # Return embedding as list of floats
-    embedding = faces[0].embedding
+    # ── Convert BGR (OpenCV) → RGB (PyTorch expects RGB) ──
+    import cv2
+
+    face_rgb = cv2.cvtColor(face_crop, cv2.COLOR_BGR2RGB)
+
+    # ── Detect and align face using MTCNN ──
+    # Returns a (1, 160, 160) float tensor, or None if no face found
+    face_tensor = mtcnn(face_rgb)
+
+    if face_tensor is None:
+        # MTCNN found no face — use the raw crop resized to 160x160
+        # This is the fallback when the crop is already a tight face region
+        from PIL import Image
+        import torchvision.transforms as transforms
+
+        face_resized = cv2.resize(face_rgb, (160, 160))
+        transform = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+            ]
+        )
+        face_tensor = transform(Image.fromarray(face_resized))
+
+    # ── Generate embedding ──
+    import torch
+
+    with torch.no_grad():
+        # Add batch dimension → (1, 3, 160, 160)
+        embedding_tensor = resnet(face_tensor.unsqueeze(0).to(device))
+
+    # Convert to plain Python list and return
+    embedding = embedding_tensor.squeeze().cpu().numpy()
     return embedding.tolist()
