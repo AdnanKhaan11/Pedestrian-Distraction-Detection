@@ -2,15 +2,16 @@
 
 <br/>
 
-```
+<pre>
 ██████╗ ██████╗ ███████╗
 ██╔══██╗██╔══██╗██╔════╝
 ██████╔╝██║  ██║███████╗
 ██╔═══╝ ██║  ██║╚════██║
 ██║     ██████╔╝███████║
 ╚═╝     ╚═════╝ ╚══════╝
+
 Pedestrian Distraction Detection System
-```
+</pre>
 
 <h1>🚶 Pedestrian Distraction Detection System</h1>
 
@@ -32,14 +33,12 @@ Pedestrian Distraction Detection System
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-Active%20Development-orange?style=flat-square)]()
 [![University](https://img.shields.io/badge/University-University%20of%20Haripur-blue?style=flat-square)]()
-[![Group](https://img.shields.io/badge/Group-09%20(M)-purple?style=flat-square)]()
 
 <br/>
 
 > **Supervisor:** Dr. Adeel Ahmad &nbsp;|&nbsp; **Students:** Adnan Khan *(F22-0431)* &nbsp;·&nbsp; Bilal Asghar *(F22-1813)*
 >
-> *University of Haripur — Faculty of Science and Technology*
-> *Department of Information Technology*
+> *University of Haripur — Department of Information Technology*
 
 <br/>
 
@@ -55,6 +54,7 @@ Pedestrian Distraction Detection System
 - [Technology Stack](#-technology-stack)
 - [ML Pipeline](#-ml-pipeline--how-it-works)
 - [Project Structure](#-project-structure)
+- [Download Models & Dataset](#-download-models--dataset)
 - [Getting Started](#-getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
@@ -338,63 +338,181 @@ VIDEO FRAME (BGR numpy array)
 ## 📁 Project Structure
 
 ```
-PedestrianProject/
+pedestrian-phone-detection/
 │
-├── 📄 README.md                    ← You are here
-├── 📄 requirements_rules.md        ← System architecture plan
-├── 📄 requirements.txt             ← Python dependencies
-├── 📄 .env.example                 ← Environment variables template
-├── 📄 docker-compose.yml           ← Docker orchestration
-├── 📄 Dockerfile                   ← Backend container
+├── 📄 README.md                         ← You are here
+├── 📄 requirements.txt                  ← Python dependencies
+├── 📄 installed_packages.txt            ← Installed packages snapshot
+├── 📄 .env.example                      ← Environment variables template
+├── 📄 docker-compose.yml                ← Docker orchestration
+├── 📄 Dockerfile                        ← Backend container
 │
-├── 📂 src/                         ← ML codebase (READ ONLY)
-│   ├── components/                 ← 16 core ML modules
-│   │   ├── runtime_detector.py     ← Per-person inference
-│   │   ├── distraction_fusion.py   ← State machine logic
+├── 📂 artifacts/                        ← Model weights & checkpoints
+│   ├── metrics/
+│   │   ├── latest_prediction.json
+│   │   └── posture_dataset_manifest.json
+│   ├── mmpose/
+│   │   ├── checkpoints/                 ← RTMPose & RTMDet weights (.pth)
+│   │   └── configs/                     ← MMPose config files (.py)
+│   ├── phone_detector/
+│   │   ├── pretrained/
+│   │   │   └── yolo11n.pt               ← Pretrained YOLOv11n base
+│   │   └── weights/
+│   │       └── best.pt                  ← Fine-tuned phone detector
+│   ├── posture_classifier/
+│   │   ├── archive/                     ← Old checkpoint backups
+│   │   └── weights/
+│   │       └── best_posture_model.pth   ← Best posture classifier
+│   └── predictions/                     ← Inference output storage
+│
+├── 📂 backend/                          ← FastAPI backend (API layer)
+│   └── app/
+│       ├── __init__.py
+│       ├── main.py                      ← FastAPI app entry point
+│       ├── config.py                    ← Reads .env settings
+│       ├── database.py                  ← Motor MongoDB client
+│       ├── static/                      ← Static file serving
+│       ├── ml/
+│       │   └── pipeline.py              ← Bridge: imports from src/
+│       ├── models/                      ← Pydantic API schemas
+│       ├── routes/                      ← HTTP + WebSocket handlers
+│       ├── services/                    ← Business logic layer
+│       └── utils/                       ← Image, embedding, response utils
+│
+├── 📂 configs/                          ← YAML configuration files
+│   ├── config.yaml                      ← Main system config
+│   ├── inference_config.yaml
+│   ├── mmpose_config.yaml
+│   ├── paths.yaml
+│   ├── phone_detector_config.yaml
+│   ├── posture_model_config.yaml
+│   └── training_config.yaml
+│
+├── 📂 data/                             ← Datasets (not tracked by git)
+│   ├── interim/
+│   ├── processed/
+│   │   ├── phone_dataset/               ← YOLO-format phone dataset
+│   │   │   ├── images/
+│   │   │   ├── labels/
+│   │   │   └── data.yaml
+│   │   └── posture_features/            ← Extracted 3D feature arrays
+│   │       ├── 3dnpy/
+│   │       └── other/
+│   └── raw/                             ← Raw video/image input
+│
+├── 📂 logs/                             ← Runtime application logs
+│   └── running_logs.log
+│
+├── 📂 runs/                             ← YOLO training run outputs
+│   └── detect/train/
+│       ├── weights/
+│       └── args.yaml
+│
+├── 📂 scripts/                          ← Standalone entry-point scripts
+│   ├── run_data_pipeline.py
+│   ├── run_inference.py
+│   ├── train_phone_model.py
+│   └── train_posture_model.py
+│
+├── 📂 src/                              ← Core ML codebase (READ ONLY)
+│   ├── components/                      ← 16 core ML modules
+│   │   ├── data_ingestion.py
+│   │   ├── dataset_builder.py
+│   │   ├── distraction_fusion.py        ← State machine logic
+│   │   ├── frame_extractor.py
+│   │   ├── hand_cropper.py
+│   │   ├── mmpose_loader.py
+│   │   ├── phone_detector.py
+│   │   ├── phone_evaluator.py
+│   │   ├── phone_model_loader.py
+│   │   ├── phone_trainer.py
 │   │   ├── pose_feature_generator.py
-│   │   └── ...
-│   ├── pipeline/                   ← Orchestration pipelines
-│   │   ├── inference_pipeline.py   ← Main inference entry point
-│   │   ├── posture_training_pipeline.py
-│   │   └── phone_training_pipeline.py
-│   ├── serving/                    ← API predictor + schemas
+│   │   ├── posture_detector.py
+│   │   ├── posture_evaluator.py
+│   │   ├── posture_model.py
+│   │   ├── posture_trainer.py
+│   │   └── runtime_detector.py          ← Per-person inference
+│   ├── config/
+│   │   ├── configuration.py
+│   │   └── constants.py
+│   ├── entity/
+│   │   └── config_entity.py
+│   ├── models/
+│   │   └── posture_cnn.py               ← 3D-CNN model definition
+│   ├── pipeline/
+│   │   ├── data_pipeline.py
+│   │   ├── inference_pipeline.py        ← Main inference entry point
+│   │   ├── phone_training_pipeline.py
+│   │   └── posture_training_pipeline.py
+│   ├── serving/
 │   │   ├── predictor.py
 │   │   └── schemas.py
-│   ├── config/                     ← Config loading + constants
-│   ├── entity/                     ← Pydantic config entities
-│   └── utils/                      ← Helpers, logging, OpenCV utils
+│   └── utils/
+│       ├── common.py
+│       ├── helpers.py
+│       ├── logger.py
+│       ├── naming_utils.py
+│       └── opencv_utils.py
 │
-├── 📂 configs/                     ← YAML configuration files
-│   └── config.yaml                 ← Main system config
+├── 📂 tests/                            ← ML unit tests
+│   ├── test_config.py
+│   ├── test_inference_pipeline.py
+│   ├── test_mmpose_loader.py
+│   ├── test_phone_model_loader.py
+│   ├── test_posture_model.py
+│   └── test_predictor.py
 │
-├── 📂 scripts/                     ← Training entry points
-│   ├── train_posture_model.py
-│   └── train_phone_model.py
-│
-├── 📂 backend/                     ← FastAPI backend (API layer)
-│   └── app/
-│       ├── main.py                 ← FastAPI app entry point
-│       ├── config.py               ← Reads .env settings
-│       ├── database.py             ← Motor MongoDB client
-│       ├── routes/                 ← HTTP + WebSocket handlers
-│       ├── services/               ← Business logic layer
-│       ├── models/                 ← Pydantic API schemas
-│       ├── ml/
-│       │   └── pipeline.py         ← Bridge: imports from src/
-│       └── utils/                  ← Image, embedding, response utils
-│
-├── 📂 frontend/                    ← React frontend
-│   └── src/
-│       ├── pages/                  ← Dashboard, Detection, Settings...
-│       ├── components/             ← Reusable UI components
-│       ├── hooks/                  ← useWebSocket, useTrainingWebSocket
-│       ├── services/
-│       │   └── api.js              ← All backend API calls
-│       ├── context/                ← Global AppContext (useReducer)
-│       └── utils/                  ← Constants and helpers
-│
-└── 📂 tests/                       ← ML unit tests
+└── 📂 app/
+    └── static/results/                  ← Inference result outputs
 ```
+
+<br/>
+
+---
+
+## 📥 Download Models & Dataset
+
+> ⚠️ **Required before running the project.** Model weights and dataset files are not included in the repository. You must download them separately and place them in the correct folders.
+
+### Google Drive Link
+
+**[📂 Click here to open Google Drive →](https://drive.google.com/drive/folders/1HUaiKFMif0cl7BmhAq68Rr3KCYYwz6xA?usp=sharing)**
+
+### Setup Instructions
+
+**Step 1** — Open the Google Drive link above.
+
+**Step 2** — Download the required files (model weights, checkpoints, dataset).
+
+**Step 3** — Place the downloaded files into the correct folders as shown below:
+
+```
+artifacts/
+│
+├── mmpose/checkpoints/
+│   ├── rtmdet_nano_8xb32-100e_coco-obj365-person-05d8511e.pth
+│   └── rtmpose-tiny_simcc-aic-coco_pt-aic-coco_420e-256x192-cfc8f33d_20230126.pth
+│
+├── phone_detector/
+│   ├── pretrained/
+│   │   └── yolo11n.pt
+│   └── weights/
+│       └── best.pt
+│
+└── posture_classifier/
+    └── weights/
+        └── best_posture_model.pth
+```
+
+**Step 4** — For the dataset, place it inside:
+
+```
+data/processed/
+├── phone_dataset/       ← phone detection dataset (YOLO format)
+└── posture_features/    ← extracted 3D feature arrays (.npy files)
+```
+
+> 💡 **Tip:** If any of the folders above do not exist, create them manually following the structure shown.
 
 <br/>
 
@@ -434,11 +552,10 @@ cd Pedestrian-Distraction-Detection
 # Create virtual environment
 python -m venv youfocus
 
-# Activate it
-# On Windows:
+# Activate — Windows:
 youfocus\Scripts\activate
 
-# On macOS/Linux:
+# Activate — macOS/Linux:
 source youfocus/bin/activate
 ```
 
@@ -452,8 +569,7 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 # Install MMPose and its dependencies
 pip install -U openmim
 mim install mmengine==0.10.4
-mim install "mmcv==2.1.0"   OR 
-mim install "mmcv-lite==2.1.0"
+mim install "mmcv==2.1.0"
 mim install "mmpose==1.3.1"
 mim install "mmdet==3.3.0"
 
@@ -461,14 +577,22 @@ mim install "mmdet==3.3.0"
 pip install -r requirements.txt
 ```
 
-**GPU Users — see [GPU Setup](#gpu-setup) section below before installing PyTorch.**
+> **GPU Users** — see [GPU Setup](#gpu-setup) section below before installing PyTorch.
 
 #### 4. Install Frontend Dependencies
 
 ```bash
-cd frontend
+# Step 1: Clone the frontend repository
+git clone https://github.com/AdnanKhaan11/Pedestrian-Distraction-Frontend.git
+
+# Step 2: Enter the frontend directory
+cd Pedestrian-Distraction-Frontend
+
+# Step 3: Install dependencies
 npm install
-cd ..
+
+# Step 4: Start the frontend
+npm run dev
 ```
 
 #### 5. Configure Environment Variables
@@ -488,7 +612,7 @@ nano .env
 
 ```env
 # Database
-MONGODB_URI=mongodb://localhost:27017
+MONGODB_URI="your mongodb url"
 DB_NAME=pedestrian_detection
 
 # Security
@@ -523,8 +647,6 @@ nvcc --version
 # or
 nvidia-smi
 ```
-
-Look for the CUDA version in the output (e.g., `CUDA Version: 11.8` or `CUDA Version: 12.1`).
 
 #### Step 2 — Install the Correct PyTorch Version
 
@@ -585,20 +707,17 @@ pip install -r requirements.txt
 ---
 
 ### Running the System
- run the full system locally.
-You need **2 terminal windows** to 
+
+You need **2 terminal windows** to run the full system locally.
+
 #### Terminal 1 — Start the Backend
 
 ```bash
-# anaconda recommended
-conda create --prefix <Path> venv
-
-conda activate <path of venv>\venv
-# Make sure virtual environment is activated first
+# Make sure virtual environment is activated
 youfocus\Scripts\activate        # Windows
 source youfocus/bin/activate     # Linux/macOS
 
-# Start FastAPI backend from project root
+# Navigate to backend and start the server
 cd Pedestrian-Distraction-Detection
 cd backend
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -612,24 +731,50 @@ Available at:
 #### Terminal 2 — Start the Frontend
 
 ```bash
-
-step 1: go and download frontend of this project.
-`https://github.com/AdnanKhaan11/Pedestrian-Distraction-Frontend.git` 
+# Clone the frontend repository (if not already done)
+git clone https://github.com/AdnanKhaan11/Pedestrian-Distraction-Frontend.git
 
 cd Pedestrian-Distraction-Frontend
 
-#install dependencies
+# Install dependencies
 npm install
 
-#run the frontend
+# Run the frontend
 npm run dev
 ```
 
 Available at: **`http://localhost:5173`**
 
-> ✅ Once all two are running, open `http://localhost:5173` in your browser and navigate to **Dashboard → Start Camera** to begin real-time detection.
+> ✅ Once both are running, open `http://localhost:5173` in your browser and navigate to **Dashboard → Start Camera** to begin real-time detection.
 
+---
 
+### Docker Setup
+
+Run the entire backend stack with a single command:
+
+```bash
+# Build and start all services
+docker-compose up --build
+
+# Run in background
+docker-compose up --build -d
+
+# Stop all services
+docker-compose down
+
+# Stop and remove all data volumes
+docker-compose down -v
+```
+
+| Service | Port | Description |
+|---|---|---|
+| `backend` | `8000` | FastAPI application |
+| `mongodb` | `27017` | MongoDB database |
+
+> 📝 **Note:** The frontend is not included in Docker Compose. Run it separately with `npm run dev` in the frontend folder.
+
+<br/>
 
 ---
 
@@ -738,18 +883,20 @@ The system includes a full UI-based model training workflow.
 ## ⚙️ Configuration
 
 ### Infrastructure Config (`.env` file)
+
 Used for server-level settings. Never changes at runtime.
 
 | Variable | Default | Description |
 |---|---|---|
-| `MONGODB_URI` | `your mongodb uri` | MongoDB connection string |
+| `MONGODB_URI` | `your mongodb url` | MongoDB connection string |
 | `DB_NAME` | `pedestrian_detection` | Database name |
-| `SECRET_KEY` | *(required) in production not in local* | Signing secret |
+| `SECRET_KEY` | *(required in production)* | Signing secret |
 | `CORS_ORIGINS` | `http://localhost:5173` | Allowed frontend origins |
 | `DEVICE` | `cpu` | Inference device: `cpu` or `cuda` |
 | `LOG_LEVEL` | `INFO` | Logging level |
 
 ### Runtime Config (Settings Page)
+
 Adjustable from the Settings UI without restarting the server.
 
 | Setting | Default | Description |
@@ -872,7 +1019,7 @@ Special thanks to:
 - **Dr. Adeel Ahmad** — Project supervisor and academic guidance
 - **MMPose Team** (OpenMMLab) — RTMPose implementation
 - **Ultralytics** — YOLOv11n framework
-- **facenet-pytorch Team** — Face embedding library
+- **InsightFace Team** — Face embedding library
 - **Open Source Contributors** — All libraries listed in `requirements.txt`
 
 ---
