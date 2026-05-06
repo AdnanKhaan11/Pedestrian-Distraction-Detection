@@ -1,0 +1,20 @@
+{
+    "num_persons": 2,
+    "person_results": [
+        {
+            "posture": "safe",
+            "phone": false,
+            "state": 128,
+            "display_text": "-",
+            "score_text": "0.96"
+        },
+        {
+            "posture": "out_of_frame",
+            "phone": false,
+            "state": 1,
+            "display_text": "Out of frame",
+            "score_text": ""
+        }
+    ],
+    "saved_result_path": "app\\static\\results\\pred_man_walk.jpg"
+}

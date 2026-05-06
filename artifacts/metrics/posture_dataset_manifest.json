@@ -1,0 +1,7 @@
+{
+    "task": "posture_training",
+    "train_samples": 18723,
+    "val_samples": 4012,
+    "test_samples": 4013,
+    "feature_source_dir": "data\\processed\\posture_features"
+}

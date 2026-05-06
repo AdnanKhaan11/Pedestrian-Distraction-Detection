@@ -11,12 +11,9 @@ secrets.yaml
 configs/*secret*.yaml
 youfocus/
 
-
 # ================================
-# 🧠 MODELS & ARTIFACTS
+# 🧠 MODELS & ARTIFACTS (ONLY FILES, NOT FOLDER)
 # ================================
-artifacts/
-# models/
 *.pt
 *.pth
 *.ckpt
@@ -24,6 +21,13 @@ artifacts/
 *.onnx
 *.pkl
 *.joblib
+
+# Ignore model weights ONLY inside artifacts
+artifacts/**/*.pth
+artifacts/**/*.pt
+artifacts/**/*.bin
+artifacts/**/*.onnx
+artifacts/**/*.ckpt
 
 # ================================
 # 📊 DATA (RAW / PROCESSED)
@@ -37,22 +41,9 @@ data/processed/
 *.parquet
 *.feather
 
-# (Optional: allow sample data)
 !data/raw/.gitkeep
 !data/interim/.gitkeep
 !data/processed/.gitkeep
-
-# =========================
-# Ignore model weights ONLY inside artifacts
-# =========================
-
-artifacts/**/*.pth
-artifacts/**/*.pt
-
-# Optional (future safety)
-artifacts/**/*.bin
-artifacts/**/*.onnx
-artifacts/**/*.ckpt
 
 # ================================
 # 📈 LOGS & OUTPUTS
@@ -71,7 +62,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.py,cover
 
 # ================================
 # 🧪 TEST & COVERAGE
@@ -94,8 +84,6 @@ dist/
 # ================================
 .vscode/
 .idea/
-*.swp
-*.swo
 
 # ================================
 # 🖥️ OS FILES
@@ -121,13 +109,11 @@ temp/
 .cache/
 
 # ================================
-# 🔥 OPTIONAL (UNCOMMENT IF NEEDED)
+# 🌐 FRONTEND (EXCLUDE)
 # ================================
-# configs/*.yaml   # ⚠️ ONLY if configs contain secrets
-
-# Environment files
-backend/.env
-.env
-
-# Exclude entire frontend folder
 frontend/
+
+# ================================
+# 🔐 BACKEND ENV
+# ================================
+backend/.env
