@@ -41,7 +41,18 @@ data/processed/
 !data/raw/.gitkeep
 !data/interim/.gitkeep
 !data/processed/.gitkeep
-artifacts/
+
+# =========================
+# Ignore model weights ONLY inside artifacts
+# =========================
+
+artifacts/**/*.pth
+artifacts/**/*.pt
+
+# Optional (future safety)
+artifacts/**/*.bin
+artifacts/**/*.onnx
+artifacts/**/*.ckpt
 
 # ================================
 # 📈 LOGS & OUTPUTS

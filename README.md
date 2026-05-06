@@ -451,9 +451,11 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 
 # Install MMPose and its dependencies
 pip install -U openmim
-mim install mmengine
-mim install "mmcv==2.1.0"
-mim install "mmpose==1.3.2"
+mim install mmengine==0.10.4
+mim install "mmcv==2.1.0"   OR 
+mim install "mmcv-lite==2.1.0"
+mim install "mmpose==1.3.1"
+mim install "mmdet==3.3.0"
 
 # Install all remaining dependencies
 pip install -r requirements.txt
@@ -561,9 +563,10 @@ DEVICE=cuda
 
 ```bash
 pip install -U openmim
-mim install mmengine
+mim install "mmengine==0.10.4"
 mim install "mmcv==2.1.0"
 mim install "mmpose==1.3.2"
+mim install "mmdet==3.2.0"
 pip install -r requirements.txt
 ```
 
@@ -582,88 +585,51 @@ pip install -r requirements.txt
 ---
 
 ### Running the System
-
-You need **3 terminal windows** to run the full system locally.
-
-#### Terminal 1 — Start MongoDB
-
-```bash
-# Windows (if installed as a service)
-net start MongoDB
-
-# Windows (manual)
-mongod --dbpath ./data/db
-
-# Linux/macOS
-sudo systemctl start mongod
-```
-
-#### Terminal 2 — Start the Backend
+ run the full system locally.
+You need **2 terminal windows** to 
+#### Terminal 1 — Start the Backend
 
 ```bash
+# anaconda recommended
+conda create --prefix <Path> venv
+
+conda activate <path of venv>\venv
 # Make sure virtual environment is activated first
 youfocus\Scripts\activate        # Windows
 source youfocus/bin/activate     # Linux/macOS
 
 # Start FastAPI backend from project root
-uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
+cd Pedestrian-Distraction-Detection
+cd backend
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Available at:
-- **API:** `http://localhost:8000`
-- **Swagger Docs:** `http://localhost:8000/docs`
-- **Health Check:** `http://localhost:8000/health`
+- **API:** `http://127.0.0.1:8000`
+- **Swagger Docs:** `http://127.0.0.1:8000/docs`
+- **Health Check:** `http://127.0.0.1:8000/health`
 
-#### Terminal 3 — Start the Frontend
+#### Terminal 2 — Start the Frontend
 
 ```bash
-cd frontend
+
+step 1: go and download frontend of this project.
+`https://github.com/AdnanKhaan11/Pedestrian-Distraction-Frontend.git` 
+
+cd Pedestrian-Distraction-Frontend
+
+#install dependencies
+npm install
+
+#run the frontend
 npm run dev
 ```
 
 Available at: **`http://localhost:5173`**
 
-> ✅ Once all three are running, open `http://localhost:5173` in your browser and navigate to **Dashboard → Start Camera** to begin real-time detection.
+> ✅ Once all two are running, open `http://localhost:5173` in your browser and navigate to **Dashboard → Start Camera** to begin real-time detection.
 
-#### 🖥️ Quick Launch (Windows)
 
-Alternatively, use the provided batch file to launch both backend and frontend at once:
-
-```bash
-# From the project root directory, with virtual environment already activated:
-start.bat
-```
-
-The launcher will verify your environment and open both servers in separate terminal windows automatically.
-
----
-
-### Docker Setup
-
-Run the entire backend stack with a single command:
-
-```bash
-# Build and start all services
-docker-compose up --build
-
-# Run in background
-docker-compose up --build -d
-
-# Stop all services
-docker-compose down
-
-# Stop and remove all data volumes
-docker-compose down -v
-```
-
-| Service | Port | Description |
-|---|---|---|
-| `backend` | `8000` | FastAPI application |
-| `mongodb` | `27017` | MongoDB database |
-
-> 📝 **Note:** The frontend is not included in Docker Compose. Run it separately with `npm run dev` in the `frontend/` folder.
-
-<br/>
 
 ---
 
@@ -776,9 +742,9 @@ Used for server-level settings. Never changes at runtime.
 
 | Variable | Default | Description |
 |---|---|---|
-| `MONGODB_URI` | `mongodb://localhost:27017` | MongoDB connection string |
+| `MONGODB_URI` | `your mongodb uri` | MongoDB connection string |
 | `DB_NAME` | `pedestrian_detection` | Database name |
-| `SECRET_KEY` | *(required)* | Signing secret |
+| `SECRET_KEY` | *(required) in production not in local* | Signing secret |
 | `CORS_ORIGINS` | `http://localhost:5173` | Allowed frontend origins |
 | `DEVICE` | `cpu` | Inference device: `cpu` or `cuda` |
 | `LOG_LEVEL` | `INFO` | Logging level |
@@ -873,16 +839,6 @@ Contributions, issue reports, and feature requests are welcome!
 
 ---
 
-## 📚 References
-
-1. H. Sunxi et al., "Detecting phone-related pedestrian distracted behaviours via a two-branch convolutional neural network," *IET Intelligent Transport Systems*, pp. 147–158, 2021.
-2. E. Hatay, J. Ma, H. Sun, J. Fang, Z. Gao, Y. Yu, "Learning to detect phone-related pedestrian distracted behaviors with synthetic data," in *Proc. IEEE Intelligent Vehicles Symposium*, pp. 2479–2486, 2022.
-3. J. Jiang et al., "RTMPose: Real-time multi-person pose estimation based on mmpose," 2023.
-
-<br/>
-
----
-
 ## 📄 License
 
 ```
@@ -916,7 +872,7 @@ Special thanks to:
 - **Dr. Adeel Ahmad** — Project supervisor and academic guidance
 - **MMPose Team** (OpenMMLab) — RTMPose implementation
 - **Ultralytics** — YOLOv11n framework
-- **InsightFace Team** — Face embedding library
+- **facenet-pytorch Team** — Face embedding library
 - **Open Source Contributors** — All libraries listed in `requirements.txt`
 
 ---
