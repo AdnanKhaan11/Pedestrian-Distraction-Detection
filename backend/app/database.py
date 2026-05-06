@@ -18,6 +18,10 @@ from app.config import settings
 from pymongo import MongoClient
 import ssl
 
+import os
+
+print("MONGO URI BEING USED:", os.getenv("MONGODB_URI"))
+
 
 class Database:
     """
@@ -95,4 +99,3 @@ async def get_db() -> AsyncIOMotorDatabase:
             ...
     """
     return Database.get_database()
-

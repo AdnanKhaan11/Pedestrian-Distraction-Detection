@@ -1,79 +1,85 @@
-# ================================================================
-# PVD System — Python Requirements
-# Works on CPU and GPU — torch handles device auto-detection
-# ================================================================
+# Core Deep Learning & Computer Vision
+# torch==2.1.2
+# torchvision==0.16.2
+# opencv-python==4.8.1.78
+# Pillow==10.1.0
+# numpy==1.24.3
+# scipy==1.11.4
 
-# ── Web Framework ─────────────────────────────────────────────
+# Pose Estimation (MMPose) GPU compatable versiom
+# mmpose==1.3.2
+# mmcv==2.1.0
+# mmengine==0.10.4
+# mmdet==3.2.0
+
+# # for cpu compatable version
+# mim install "mmengine==0.10.4"
+# mim install "mmcv-lite==2.1.0"
+# mim install "mmdet==3.2.0"
+# mim install "mmpose==1.3.2"
+
+
+
+# Object Detection (YOLO)
+ultralytics==8.0.223
+
+# Data Processing
+pandas==2.1.3
+PyYAML==6.0.1
+scikit-image==0.22.0
+scikit-learn==1.3.2
+
+# Web Framework & API
 fastapi==0.109.0
 uvicorn==0.27.0
 python-multipart==0.0.6
-websockets==12.0
-starlette==0.35.1
-
-# ── Database ──────────────────────────────────────────────────
-motor==3.7.1
-pymongo==4.17.0
-dnspython==2.8.0
-
-# ── Data Validation ───────────────────────────────────────────
+jinja2==3.1.2
 pydantic==2.5.2
 pydantic-settings==2.1.0
-pydantic_core==2.14.5
-annotated-types==0.7.0
-
-# ── ML Core ───────────────────────────────────────────────────
-# NOTE: torch and torchvision are NOT here
-# They are installed separately in Dockerfile with CUDA support
-# to support both CPU and GPU in same image
-numpy==1.24.3
-scipy==1.11.4
-scikit-learn==1.3.2
-scikit-image==0.22.0
-
-# ── Computer Vision ───────────────────────────────────────────
-# IMPORTANT: headless version only — no GUI in Docker
-opencv-python-headless==4.8.1.78
-pillow==10.2.0
-
-# ── Face Recognition ──────────────────────────────────────────
-facenet-pytorch==2.6.0
-
-# ── MM Libraries installer ────────────────────────────────────
-# openmim must be pip installed before mim install commands
-openmim==0.3.9
-
-# ── Pose / Detection utilities ────────────────────────────────
-pycocotools==2.0.11
-xtcocotools==1.14.3
-json-tricks==3.17.3
-munkres==1.1.4
-shapely==2.1.2
-
-# ── Utilities ─────────────────────────────────────────────────
 python-dotenv==1.0.0
-pyyaml==6.0.1
-tqdm==4.65.2
-requests==2.28.2
-aiofiles==23.2.1
-anyio==4.13.0
+websockets==12.0
+
+# Database & ORM
+sqlalchemy==2.0.23
+alembic==1.12.1
+
+# Authentication & Security
 python-jose==3.3.0
-passlib==1.7.4
 bcrypt==4.1.1
+passlib==1.7.4
+python-jose[cryptography]==3.3.0
 email-validator==2.1.0
-python-dateutil==2.9.0.post0
-pytz==2023.4
-six==1.17.0
-click==8.3.3
-rich==13.4.2
-tabulate==0.10.0
-termcolor==3.3.0
-packaging==24.2
-filelock==3.14.0
-fsspec==2026.2.0
-networkx==3.4.2
-sympy==1.14.0
-mpmath==1.3.0
-addict==2.4.0
-yapf==0.43.0
+python-logging-loki==0.3.1
+# Face Recognition
+# face-recognition==1.3.5
+cmake==3.27.6
+# insightface==0.7.3
+facenet-pytorch
+
+# Streamlit (for UI)
+# streamlit==1.29.0
+
+# Experiment Tracking & MLOps
+mlflow==2.10.2
+
+# HTTP & Utilities
+requests==2.31.0
+aiofiles==23.2.1
+
+# Additional useful utilities
+tqdm==4.66.1
 matplotlib==3.8.2
-pandas==2.1.3
+seaborn==0.13.0
+
+black==23.12.0
+flake8==6.1.0
+pytest==7.4.3
+pytest-asyncio==0.21.1
+
+# Development and Testing (optional but recommended)
+# pytest==7.4.3
+# pytest-asyncio==0.21.1
+# black==23.12.1
+# flake8==6.1.0
+# isort==5.13.2
+

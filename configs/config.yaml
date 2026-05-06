@@ -27,7 +27,7 @@ system:
 tracking:
   enable_mlflow: true
   experiment_name: "pedestrian_distraction_detection"
-  tracking_uri: "https://dagshub.com/ak5933487/Pedestrian-Distraction-Detection.mlflow"
+  tracking_uri: "https://dagshub.com/ak5933/Pedestrian-Distraction-Detection.mlflow" #rnter your own URI FROM DAGSHUB
 
 runtime:
   use_pretrained_phone_detector_fallback: false
