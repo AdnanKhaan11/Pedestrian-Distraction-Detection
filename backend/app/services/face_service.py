@@ -1,11 +1,14 @@
 """
-Face cropping, embedding, and deduplication service.
+Face embedding, deduplication, and MongoDB storage service.
 
 Handles:
-- Face cropping from original frame using face_region coordinates
-- 128-D embedding generation
+- Decoding model face crop from announced_face_b64 (no re-cropping needed)
+- Embedding generation for deduplication
 - Cosine similarity deduplication
 - MongoDB face record updates/inserts
+
+Note: Face cropping is done by the ML model (runtime_detector.py).
+      facenet_pytorch has been removed — the model handles face detection.
 """
 
 import base64
@@ -28,69 +31,29 @@ class FaceService:
     DEFAULT_SIMILARITY_THRESHOLD = 0.85
 
     @staticmethod
-    def _crop_face_from_frame(
-        frame: np.ndarray, face_region: dict
-    ) -> Optional[np.ndarray]:
+    def _decode_face_b64(face_b64: str) -> Optional[np.ndarray]:
         """
-        Extract face crop from frame using bounding box coordinates.
+        Decode base64 JPEG face crop (produced by the ML model) into a numpy BGR array.
 
         Args:
-            frame: Original BGR frame
-            face_region: Dict with x1, y1, x2, y2 keys (pixel coords)
+            face_b64: Base64-encoded JPEG string from pedestrian.announced_face_b64
 
         Returns:
-            Face crop as BGR numpy array, or None if crop invalid
+            Face image as BGR numpy array resized to 160x160, or None if decoding fails
         """
         try:
-            x1 = max(0, int(face_region.get("x1", 0)))
-            y1 = max(0, int(face_region.get("y1", 0)))
-            x2 = min(frame.shape[1], int(face_region.get("x2", frame.shape[1])))
-            y2 = min(frame.shape[0], int(face_region.get("y2", frame.shape[0])))
-
-            if x2 <= x1 or y2 <= y1:
-                print(
-                    f"Warning: invalid crop coordinates x1={x1} y1={y1} x2={x2} y2={y2} — skipping"
-                )
-                return None
-
-            face_crop = frame[y1:y2, x1:x2]
-
-            if face_crop is None or face_crop.size == 0:
-                print("Warning: face crop is empty after slicing frame")
-                return None
-
-            face_crop_resized = cv2.resize(
-                face_crop, (160, 160), interpolation=cv2.INTER_LINEAR
+            face_bytes = base64.b64decode(face_b64)
+            face_array = cv2.imdecode(
+                np.frombuffer(face_bytes, np.uint8), cv2.IMREAD_COLOR
             )
-
-            return face_crop_resized
-
+            if face_array is None or face_array.size == 0:
+                print("Warning: decoded face array is empty")
+                return None
+            # Resize to 160x160 — standard input size for embedding model
+            return cv2.resize(face_array, (160, 160), interpolation=cv2.INTER_LINEAR)
         except Exception as e:
-            print(f"Warning: _crop_face_from_frame failed: {e}")
+            print(f"Warning: _decode_face_b64 failed: {e}")
             return None
-
-    @staticmethod
-    def _face_crop_to_base64(face_crop: np.ndarray) -> str:
-        """
-        Encode face crop as Base64 JPEG string.
-
-        Args:
-            face_crop: Face image as numpy BGR array
-
-        Returns:
-            Base64-encoded JPEG string
-        """
-        try:
-            success, buffer = cv2.imencode(
-                ".jpg", face_crop, [cv2.IMWRITE_JPEG_QUALITY, 90]
-            )
-            if not success:
-                print("Warning: cv2.imencode failed to encode face crop")
-                return ""
-            return base64.b64encode(buffer).decode("utf-8")
-        except Exception as e:
-            print(f"Warning: _face_crop_to_base64 failed: {e}")
-            return ""
 
     @staticmethod
     async def _get_similarity_threshold(db: AsyncIOMotorDatabase) -> float:
@@ -118,7 +81,7 @@ class FaceService:
         Find existing face with similar embedding in MongoDB.
 
         Args:
-            embedding: New face embedding (128-D)
+            embedding: New face embedding vector
             threshold: Similarity threshold (0.85 recommended)
             db: AsyncIOMotorDatabase
             max_age_days: Only query faces seen in last N days
@@ -155,16 +118,21 @@ class FaceService:
 
     @staticmethod
     async def process_face(
-        original_frame: np.ndarray,
+        original_frame: Optional[
+            np.ndarray
+        ],  # kept for signature compat, no longer used
         pedestrian: PedestrianResult,
         detection_result: DetectionResult,
     ) -> Optional[str]:
         """
-        Process face from detection: crop, embed, deduplicate, save to DB.
+        Process face from detection: decode model crop, embed, deduplicate, save to DB.
+
+        The face crop comes directly from the ML model via pedestrian.announced_face_b64.
+        No re-cropping from the original frame is needed.
 
         Args:
-            original_frame: Original frame as numpy BGR array
-            pedestrian: PedestrianResult with face_region
+            original_frame: Not used — kept for backward compatibility only
+            pedestrian: PedestrianResult with announced_face_b64 from the ML model
             detection_result: Full DetectionResult for context
 
         Returns:
@@ -172,60 +140,45 @@ class FaceService:
         """
         db: AsyncIOMotorDatabase = Database.get_database()
 
-        # FIX 1: Log clearly when face_region is missing instead of silent return
-        if not pedestrian.face_region:
-            print("Warning: pedestrian has no face_region — cannot crop or save face")
+        # Use the face crop produced by the ML model directly
+        if not pedestrian.announced_face_b64:
+            print(
+                "Warning: pedestrian has no announced_face_b64 — face was not announced this frame"
+            )
             return None
 
-        # Crop face from frame
-        face_crop = FaceService._crop_face_from_frame(
-            original_frame,
-            {
-                "x1": pedestrian.face_region.x1,
-                "y1": pedestrian.face_region.y1,
-                "x2": pedestrian.face_region.x2,
-                "y2": pedestrian.face_region.y2,
-            },
-        )
+        # Decode the model's face crop from base64 to numpy array
+        face_crop = FaceService._decode_face_b64(pedestrian.announced_face_b64)
 
         if face_crop is None:
-            print("Warning: face crop returned None — skipping save")
+            print("Warning: face crop decoding returned None — skipping save")
             return None
 
-        # Generate embedding
+        # Generate embedding for deduplication
         try:
             embedding = generate_face_embedding(face_crop)
         except Exception as e:
             print(f"Warning: embedding generation failed: {e}")
             return None
 
-        # FIX 2: Convert numpy array to plain Python list before MongoDB insert
-        # MongoDB BSON cannot serialize numpy arrays — this was silently failing
+        # Convert numpy array to plain Python list before MongoDB insert
         if isinstance(embedding, np.ndarray):
             embedding = embedding.tolist()
 
-        # Find similar face
+        # Find similar face in DB
         threshold = await FaceService._get_similarity_threshold(db)
         matching_face = await FaceService._find_matching_face(embedding, threshold, db)
 
-        # Encode face to Base64
-        face_base64 = FaceService._face_crop_to_base64(face_crop)
-
-        if not face_base64:
-            print(
-                "Warning: face base64 encoding produced empty string — image may not display in UI"
-            )
+        # Use the base64 string directly — already encoded by the model
+        face_base64 = pedestrian.announced_face_b64
 
         now = datetime.utcnow()
-
-        # FIX 3: Extract session_id and violation_type for frontend display
         session_id = detection_result.session_id or "unknown"
         violation_type = pedestrian.posture_state or "distracted"
 
         if matching_face:
             # Update existing face record
             face_id = matching_face["_id"]
-
             try:
                 await db.faces.update_one(
                     {"_id": face_id},
@@ -233,8 +186,6 @@ class FaceService:
                         "$set": {
                             "last_seen": now,
                             "image_base64": face_base64,
-                            # FIX 4: Keep status as active on re-detection
-                            # Only mark resolved manually from frontend
                             "status": matching_face.get("status", "active"),
                         },
                         "$inc": {
@@ -257,12 +208,11 @@ class FaceService:
         else:
             # Create new face record
             face_id = str(uuid4())
-
             try:
                 await db.faces.insert_one(
                     {
                         "_id": face_id,
-                        # FIX 5: Added all fields the frontend Violators UI expects
+                        "face_id": face_id,
                         "embedding": embedding,
                         "image_base64": face_base64,
                         "first_seen": now,

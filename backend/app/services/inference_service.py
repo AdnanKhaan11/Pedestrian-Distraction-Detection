@@ -187,9 +187,9 @@ class InferenceService:
             except (ValueError, TypeError):
                 pass
 
-        # FIX 1: Fallback — if pipeline did not return face_xyxy,
-        # estimate face region from top 35% of person bounding box.
-        # This ensures face crop always has coordinates to work with.
+        # Fallback: if pipeline did not return face_xyxy,
+        # estimate face region from top 35% of person bounding box
+        # so frontend always has coordinates to draw the face box.
         if face_region is None:
             try:
                 x1_p, y1_p, x2_p, y2_p = [int(v) for v in xyxy]
@@ -202,30 +202,42 @@ class InferenceService:
                     y2=min(estimated_face_y2, y2_p),
                 )
                 print(
-                    f"Info: face_xyxy not in pipeline output — using estimated face region from person bbox"
+                    "Info: face_xyxy not in pipeline output — using estimated face region from person bbox"
                 )
             except Exception as e:
                 print(f"Warning: failed to estimate face region from person bbox: {e}")
 
-        # FIX 2: Map pipeline posture labels correctly
-        # Pipeline returns: 'safe', 'distracted', 'out_of_frame', 'using_or_suspicious'
+        # ── Pull the model's face crop from pipeline output ──
+        # Backend calls run_on_frame() directly so announced_face_frame
+        # arrives as a raw numpy array — encode it to base64 here.
+        # If it already came as a string (via predictor.py), use it directly.
+        announced_face_b64 = None
+        raw_face = person_result.get("announced_face_frame")
+        if raw_face is not None:
+            if isinstance(raw_face, np.ndarray):
+                try:
+                    _, jpeg_encoded = cv2.imencode(".jpg", raw_face)
+                    announced_face_b64 = base64.b64encode(
+                        jpeg_encoded.tobytes()
+                    ).decode("utf-8")
+                except Exception as e:
+                    print(f"Warning: failed to encode announced_face_frame: {e}")
+            elif isinstance(raw_face, str):
+                # Already base64 — came through predictor.py
+                announced_face_b64 = raw_face
+
         posture_label = person_result.get("posture", "safe")
         posture_state = posture_label
 
         phone_detected = person_result.get("phone", False)
 
-        # FIX 3: state is an integer from pipeline (128=safe, 32=distracted, 1=out_of_frame)
         fusion_state = str(person_result.get("state", 0))
 
-        # FIX 4: is_violation based on posture label not string "USING"
-        # is_violation = posture_label in ("distracted", "using_or_suspicious")
         is_violation = posture_label in (
             "distracted",
             "using_or_suspicious",
-            "suspicious",
         )
 
-        # FIX 5: Extract real confidence from score_text instead of hardcoded values
         score_text = person_result.get("score_text", "0.0")
         try:
             posture_confidence = float(score_text) if score_text else 0.0
@@ -233,7 +245,6 @@ class InferenceService:
             posture_confidence = 0.0
         posture_confidence = max(0.0, min(1.0, posture_confidence))
 
-        # Extract phone confidence from phone detection text
         phone_text = person_result.get("display_text", "")
         try:
             if ":" in str(phone_text):
@@ -252,6 +263,7 @@ class InferenceService:
             phone_confidence=phone_confidence,
             fusion_state=fusion_state,
             face_region=face_region,
+            announced_face_b64=announced_face_b64,
             is_violation=is_violation,
         )
 

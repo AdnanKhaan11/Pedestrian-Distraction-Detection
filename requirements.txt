@@ -8,7 +8,7 @@
 
 
 # Object Detection (YOLO)
-# ultralytics==8.0.223
+
 ultralytics==8.4.45
 opencv-python==4.8.1.78
 # Data Processing

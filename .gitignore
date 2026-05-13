@@ -2,7 +2,7 @@
 # 🔐 ENV & SECRETS (CRITICAL)
 # ================================
 .env
-.env.*
+!.env.example
 *.env
 *.key
 *.pem
@@ -54,6 +54,13 @@ wandb/
 mlruns/
 tensorboard/
 runs/
+
+#=================================
+#  Hide hugging Fcae folders
+#=================================
+pvs_backend/
+/pvs_backend
+./pvs_backend
 
 # ================================
 # 🐍 PYTHON CACHE

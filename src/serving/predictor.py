@@ -5,6 +5,7 @@ The predictor loads configs, initializes the pipeline, and returns structured re
 This keeps API code small and avoids mixing business logic inside route functions.
 """
 
+import base64
 from pathlib import Path
 
 import cv2
@@ -13,6 +14,20 @@ from src.config.configuration import ConfigurationManager
 from src.pipeline.inference_pipeline import InferencePipeline
 from src.utils.common import create_directories, save_json
 from src.utils.logger import get_logger
+
+
+def _encode_face_frame(face_frame) -> str | None:
+    """
+    Encode a face frame (numpy BGR image) to a base64 JPEG string.
+    Returns None if encoding fails or frame is None.
+    """
+    if face_frame is None:
+        return None
+    try:
+        _, jpeg_encoded = cv2.imencode(".jpg", face_frame)
+        return base64.b64encode(jpeg_encoded.tobytes()).decode("utf-8")
+    except Exception:
+        return None
 
 
 class Predictor:
@@ -87,6 +102,10 @@ class Predictor:
                     "state": person_result["state"],
                     "display_text": person_result["display_text"],
                     "score_text": person_result["score_text"],
+                    "face_xyxy": person_result.get("face_xyxy"),
+                    "announced_face_frame": _encode_face_frame(
+                        person_result.get("announced_face_frame")
+                    ),
                 }
                 for person_result in result["person_results"]
             ],
@@ -109,21 +128,46 @@ class Predictor:
         saved_count = 0
         all_results = []
 
+        # Persist runtime_parameters across frames so face announce interval works correctly.
+        runtime_parameters = {
+            "time_last_record_framerate": 0.0,
+            "time_last_announce_face": 0.0,
+            "path_runtime_handframes": None,
+        }
+
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
             if frame_count % frame_step == 0:
-                result = self.pipeline.run_on_frame(frame=frame, draw_visualizer=False)
+                result = self.pipeline.run_on_frame(
+                    frame=frame,
+                    draw_visualizer=False,
+                    runtime_parameters=runtime_parameters,
+                )
                 if save_rendered_output:
                     out_name = f"pred_{video_path.stem}_frame{saved_count:04d}.jpg"
                     out_path = self.paths_config.frontend_result_dir / out_name
                     cv2.imwrite(str(out_path), result["frame"])
+
                 all_results.append(
                     {
                         "frame_index": frame_count,
                         "num_persons": result["num_persons"],
-                        "person_results": result["person_results"],
+                        "person_results": [
+                            {
+                                "posture": person_result["posture"],
+                                "phone": person_result["phone"],
+                                "state": person_result["state"],
+                                "display_text": person_result["display_text"],
+                                "score_text": person_result["score_text"],
+                                "face_xyxy": person_result.get("face_xyxy"),
+                                "announced_face_frame": _encode_face_frame(
+                                    person_result.get("announced_face_frame")
+                                ),
+                            }
+                            for person_result in result["person_results"]
+                        ],
                     }
                 )
                 saved_count += 1

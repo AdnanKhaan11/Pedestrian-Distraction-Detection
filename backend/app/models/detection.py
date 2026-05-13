@@ -61,8 +61,16 @@ class PedestrianResult(BaseModel):
     )
 
     face_region: FaceRegion | None = Field(
-        None, description="Face crop region, if detected"
+        None, description="Face crop region coordinates, if detected"
     )
+
+    # ── NEW: actual face crop from the model, base64-encoded JPEG ──
+    # This is cropped by runtime_detector when distraction is confirmed.
+    # Replaces the need for facenet_pytorch to re-detect and re-crop the face.
+    announced_face_b64: str | None = Field(
+        None, description="Base64 JPEG of face crop produced by the ML model"
+    )
+
     face_id: str | None = Field(
         None, description="Resolved face ID for this pedestrian, if available"
     )

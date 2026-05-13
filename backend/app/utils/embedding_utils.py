@@ -1,9 +1,14 @@
 """
 Embedding and similarity utilities for face recognition.
 
-Uses facenet-pytorch for face embeddings (512-dimensional vectors).
+Uses OpenCV HSV color histograms for face embeddings (114-dimensional vectors).
+No external deep learning libraries required — cv2 and numpy only.
+
+Note: facenet-pytorch has been removed. Face cropping is handled by the ML model
+      (runtime_detector.py). Embeddings here are used only for deduplication.
 """
 
+import cv2
 import numpy as np
 
 
@@ -48,85 +53,47 @@ def euclidean_distance(embedding1: list[float], embedding2: list[float]) -> floa
 
 def generate_face_embedding(face_crop: np.ndarray) -> list[float]:
     """
-    Generate 512-D embedding from face crop using facenet-pytorch.
+    Generate a 114-D embedding from a face crop using HSV color histograms.
+
+    Uses OpenCV HSV histograms — no external deep learning libraries needed.
+    Sufficient for face deduplication within a session.
+
+    Embedding breakdown:
+        - H channel: 50 bins
+        - S channel: 32 bins
+        - V channel: 32 bins
+        - Total: 114 dimensions, L2-normalized
 
     Args:
         face_crop: Face image as numpy array (BGR, any size — resized internally)
 
     Returns:
-        List of 512 floats representing the face embedding
+        List of 114 floats representing the face embedding
 
     Raises:
-        ImportError: If facenet-pytorch not installed
-        RuntimeError: If embedding generation fails
+        ValueError: If face_crop is None or invalid
     """
-    try:
-        import torch
-        from facenet_pytorch import InceptionResnetV1, MTCNN
-    except ImportError:
-        raise ImportError(
-            "facenet-pytorch not installed. Install via: pip install facenet-pytorch"
-        )
+    if face_crop is None or face_crop.size == 0:
+        raise ValueError("generate_face_embedding: face_crop is None or empty")
 
-    # ── Lazy load models — only initialized once on first call ──
-    if not hasattr(generate_face_embedding, "_resnet"):
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # Resize to fixed size for consistent histograms
+    face_resized = cv2.resize(face_crop, (64, 64), interpolation=cv2.INTER_LINEAR)
 
-        # MTCNN — face detector + aligner
-        generate_face_embedding._mtcnn = MTCNN(
-            image_size=160,
-            margin=10,
-            min_face_size=20,
-            thresholds=[0.6, 0.7, 0.7],
-            factor=0.709,
-            post_process=True,
-            device=device,
-            keep_all=False,  # only keep the most confident face
-        )
+    # Convert BGR → HSV
+    # HSV is more robust to lighting changes than raw RGB
+    face_hsv = cv2.cvtColor(face_resized, cv2.COLOR_BGR2HSV)
 
-        # InceptionResnetV1 — embedding model pretrained on VGGFace2
-        generate_face_embedding._resnet = (
-            InceptionResnetV1(pretrained="vggface2").eval().to(device)
-        )
+    # Compute per-channel histograms
+    # H: 0–179 in OpenCV,  S: 0–255,  V: 0–255
+    h_hist = cv2.calcHist([face_hsv], [0], None, [50], [0, 180]).flatten()
+    s_hist = cv2.calcHist([face_hsv], [1], None, [32], [0, 256]).flatten()
+    v_hist = cv2.calcHist([face_hsv], [2], None, [32], [0, 256]).flatten()
 
-        generate_face_embedding._device = device
-        print("Info: facenet-pytorch models loaded successfully")
+    # Concatenate into one vector
+    embedding = np.concatenate([h_hist, s_hist, v_hist]).astype(np.float32)
 
-    mtcnn = generate_face_embedding._mtcnn
-    resnet = generate_face_embedding._resnet
-    device = generate_face_embedding._device
+    # L2-normalize so cosine similarity works correctly
+    norm = np.linalg.norm(embedding) + 1e-8
+    embedding = embedding / norm
 
-    # ── Convert BGR (OpenCV) → RGB (PyTorch expects RGB) ──
-    import cv2
-
-    face_rgb = cv2.cvtColor(face_crop, cv2.COLOR_BGR2RGB)
-
-    # ── Detect and align face using MTCNN ──
-    # Returns a (1, 160, 160) float tensor, or None if no face found
-    face_tensor = mtcnn(face_rgb)
-
-    if face_tensor is None:
-        # MTCNN found no face — use the raw crop resized to 160x160
-        # This is the fallback when the crop is already a tight face region
-        from PIL import Image
-        import torchvision.transforms as transforms
-
-        face_resized = cv2.resize(face_rgb, (160, 160))
-        transform = transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-            ]
-        )
-        face_tensor = transform(Image.fromarray(face_resized))
-
-    # ── Generate embedding ──
-    import torch
-
-    with torch.no_grad():
-        # Add batch dimension → (1, 3, 160, 160)
-        embedding_tensor = resnet(face_tensor.unsqueeze(0).to(device))
-
-    # Convert to plain Python list and return
-    embedding = embedding_tensor.squeeze().cpu().numpy()
     return embedding.tolist()

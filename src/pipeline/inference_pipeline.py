@@ -5,6 +5,7 @@ This is the modular pipeline replacement for the mixed logic previously spread a
 main.py, ai_engine.py, and processing.py in your current project.
 """
 
+import time
 from pathlib import Path
 from typing import Any
 
@@ -169,6 +170,9 @@ class InferencePipeline:
                 "path_runtime_handframes": None,
             }
 
+        # Update current frame time so runtime_detector can compare against last announce time.
+        runtime_parameters["time_last_record_framerate"] = time.time()
+
         person_results = []
         for keypoints, xyxy in zip(keypoints_list, xyxy_list):
             one_result = self.runtime_detector.process_one_person(
@@ -180,6 +184,14 @@ class InferencePipeline:
             )
             one_result["xyxy"] = xyxy.tolist()
             person_results.append(one_result)
+
+        # Update face announce time if any person had a face announced this frame.
+        # This mirrors the old main.py logic and keeps the interval working correctly.
+        any_face_announced = any(
+            r.get("announced_face_frame") is not None for r in person_results
+        )
+        if any_face_announced:
+            runtime_parameters["time_last_announce_face"] = time.time()
 
         result = {
             "frame": frame,
